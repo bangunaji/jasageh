@@ -17,18 +17,18 @@ import UserProfileModal from "./components/UserProfileModal";
 import PostDetailModal from "./components/PostDetailModal";
 
 import {
-  Search, Filter, X, Plus, ChevronDown, Trash2, Star, MapPin, Tag, Loader2
+  Search, Filter, X, Plus, ChevronDown, Trash2, Star, MapPin, Tag, Loader2, Phone
 } from "lucide-react";
 
 const CATEGORIES = [
-  "Semua Kategori","Teknologi & IT","Desain & Kreatif","Pendidikan & Les Privat",
-  "Kuliner & Katering","Otomotif & Servis","Rumah & Bangunan","Kesehatan & Kecantikan","Lainnya"
+  "Semua Kategori", "Teknologi & IT", "Desain & Kreatif", "Pendidikan & Les Privat",
+  "Kuliner & Katering", "Otomotif & Servis", "Rumah & Bangunan", "Kesehatan & Kecantikan", "Lainnya"
 ];
 const REGIONS = [
-  "Semua Wilayah","Kota Bandar Lampung","Kota Metro","Kab. Lampung Selatan",
-  "Kab. Lampung Tengah","Kab. Lampung Timur","Kab. Lampung Utara","Kab. Lampung Barat",
-  "Kab. Tulang Bawang","Kab. Tulang Bawang Barat","Kab. Tanggamus","Kab. Pesawaran",
-  "Kab. Pringsewu","Kab. Mesuji","Kab. Way Kanan","Kab. Pesisir Barat"
+  "Semua Wilayah", "Kota Bandar Lampung", "Kota Metro", "Kab. Lampung Selatan",
+  "Kab. Lampung Tengah", "Kab. Lampung Timur", "Kab. Lampung Utara", "Kab. Lampung Barat",
+  "Kab. Tulang Bawang", "Kab. Tulang Bawang Barat", "Kab. Tanggamus", "Kab. Pesawaran",
+  "Kab. Pringsewu", "Kab. Mesuji", "Kab. Way Kanan", "Kab. Pesisir Barat"
 ];
 
 function LoadingSpinner() {
@@ -75,6 +75,68 @@ export default function App() {
   const [showAddPostForm, setShowAddPostForm] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [bioText, setBioText] = React.useState(currentUser?.bio || "");
+  const [isEditingBio, setIsEditingBio] = React.useState(false);
+  const [loadingBio, setLoadingBio] = React.useState(false);
+  const [myReviews, setMyReviews] = React.useState([]);
+  const [whatsappText, setWhatsappText] = React.useState(currentUser?.whatsapp || "");
+  const [isEditingWhatsapp, setIsEditingWhatsapp] = React.useState(false);
+  const [loadingWhatsapp, setLoadingWhatsapp] = React.useState(false);
+
+  // Ambil ulasan dari sub-collection users -> currentUser.uid -> reviews
+  React.useEffect(() => {
+    if (!currentUser?.uid) return;
+    const q = query(
+      collection(db, "users", currentUser.uid, "ratings"),
+      orderBy("date", "desc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setMyReviews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsub();
+  }, [currentUser?.uid]);
+
+  // Sinkronisasi input bioText saat data currentUser dimuat
+  React.useEffect(() => {
+    if (currentUser?.bio) {
+      setBioText(currentUser.bio);
+    }
+  }, [currentUser]);
+
+  // Fungsi menyimpan nomor WhatsApp ke Firestore
+  const handleSaveWhatsapp = async () => {
+    if (!currentUser?.uid) return;
+    setLoadingWhatsapp(true);
+    try {
+      const userRef = doc(db, "users", currentUser.uid);
+      // Menghapus karakter non-angka jika user tidak sengaja memasukkan spasi atau strip
+      const cleanNumber = whatsappText.replace(/\D/g, "");
+
+      await updateDoc(userRef, { whatsapp: cleanNumber });
+      setIsEditingWhatsapp(false);
+      alert("Nomor WhatsApp berhasil diperbarui!");
+    } catch (error) {
+      console.error("Gagal memperbarui nomor WhatsApp:", error);
+    } finally {
+      setLoadingWhatsapp(false);
+    }
+  };
+
+  // Fungsi menyimpan perubahan biodata ke Firestore
+  const handleSaveBio = async () => {
+    if (!currentUser?.uid) return;
+    setLoadingBio(true);
+    try {
+      const userRef = doc(db, "users", currentUser.uid);
+      await updateDoc(userRef, { bio: bioText.trim() });
+      setIsEditingBio(false);
+      alert("Biodata berhasil diperbarui!");
+    } catch (error) {
+      console.error("Gagal memperbarui biodata:", error);
+    } finally {
+      setLoadingBio(false);
+    }
+  };
 
   // Form state
   const [newPost, setNewPost] = useState({ title: "", description: "", category: "", region: "", whatsapp: "", type: "offer" });
@@ -134,7 +196,7 @@ export default function App() {
         if (data.createdAt) {
           const madingTime = data.createdAt.toMillis ? data.createdAt.toMillis() : new Date(data.createdAt).getTime();
           if (now - madingTime > fiveDaysMs) {
-            deleteDoc(doc(db, "mading", d.id)).catch(() => {});
+            deleteDoc(doc(db, "mading", d.id)).catch(() => { });
             return;
           }
         }
@@ -222,10 +284,10 @@ export default function App() {
     if (!currentUser) { alert("Silakan login untuk menyukai mading!"); return; }
     const mading = madingList.find(m => m.id === madingId);
     if (!mading) return;
-    
+
     const hasLiked = mading.likes?.includes(currentUser.uid);
     const madingRef = doc(db, "mading", madingId);
-    
+
     if (hasLiked) {
       await updateDoc(madingRef, { likes: arrayRemove(currentUser.uid) });
     } else {
@@ -283,11 +345,22 @@ export default function App() {
   };
 
   // ─── Get Rating Summary ───────────────────────────────────────────
+  // ─── Get Rating Summary (Sempurna & Real-time) ───────────────────
   const getUserRatingSummary = (userId) => {
+    // 1. Kondisi KHUSUS jika yang dicari adalah ID kita sendiri (Profil Saya)
+    if (currentUser && userId === currentUser.uid) {
+      if (!myReviews || !myReviews.length) return { average: "0.0", count: 0 };
+      const avg = (myReviews.reduce((s, r) => s + (r.stars || 0), 0) / myReviews.length).toFixed(1);
+      return { average: avg, count: myReviews.length };
+    }
+
+    // 2. Kondisi UMUM untuk pengguna lain (membaca data array jika ada atau default 0)
     const user = users.find(u => u.id === userId);
-    const ratings = user?.ratingsCache || [];
-    if (!ratings.length) return { average: 0, count: 0 };
-    const avg = (ratings.reduce((s, r) => s + r.stars, 0) / ratings.length).toFixed(1);
+    // Cek apakah di objek user ada array 'ratings' atau 'ratingsCache'
+    const ratings = user?.ratings || user?.ratingsCache || [];
+    if (!ratings.length) return { average: "0.0", count: 0 };
+
+    const avg = (ratings.reduce((s, r) => s + (r.stars || 0), 0) / ratings.length).toFixed(1);
     return { average: avg, count: ratings.length };
   };
 
@@ -348,12 +421,24 @@ export default function App() {
                 <div>
                   <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-2">Tipe Postingan</label>
                   <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => setNewPost(p => ({ ...p, type: "offer" }))}
-                      className={`comic-btn py-3 justify-center text-sm transition-all ${newPost.type === "offer" ? "bg-[var(--chocobi-green)] border-black scale-[1.02] shadow-[2px_2px_0px_#000]" : "bg-white hover:bg-[#e6f4cd]"}`}>
+                    <button type="button"
+                      onClick={() => setNewPost(p => ({ ...p, type: "offer" }))}
+                      className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
+          ${newPost.type === "offer"
+                          ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
+                          : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
+                        }`}
+                    >
                       🙋‍♂️ Saya Tawarkan Jasa
                     </button>
-                    <button type="button" onClick={() => setNewPost(p => ({ ...p, type: "need" }))}
-                      className={`comic-btn py-3 justify-center text-sm transition-all ${newPost.type === "need" ? "bg-[var(--pastel-pink)] border-black scale-[1.02] shadow-[2px_2px_0px_#000]" : "bg-white hover:bg-[#ffe3e6]"}`}>
+                    <button type="button"
+                      onClick={() => setNewPost(p => ({ ...p, type: "need" }))}
+                      className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
+          ${newPost.type === "need"
+                          ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
+                          : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
+                        }`}
+                    >
                       🔍 Saya Cari Jasa
                     </button>
                   </div>
@@ -427,11 +512,11 @@ export default function App() {
           {/* Tabs */}
           <div className="flex border-3 border-black rounded-xl overflow-hidden mb-6 shadow-[3px_3px_0px_#000]">
             <button onClick={() => setActiveTab("offer")}
-              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "offer" ? "bg-[var(--chocobi-green)] border-r-2 border-black" : "bg-white hover:bg-gray-50 border-r-2 border-black"}`}>
+              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "offer" ? "bg-[var(--shinchan-yellow)] border-r-2 border-black" : "bg-white hover:bg-gray-50 border-r-2 border-black"}`}>
               🙋‍♂️ Tawarkan Jasa
             </button>
             <button onClick={() => setActiveTab("need")}
-              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "need" ? "bg-[var(--pastel-pink)]" : "bg-white hover:bg-gray-50"}`}>
+              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "need" ? "bg-[var(--shinchan-yellow)]" : "bg-white hover:bg-gray-50"}`}>
               🔍 Cari Jasa
             </button>
           </div>
@@ -502,6 +587,100 @@ export default function App() {
                 <p className="text-xs font-bold text-gray-500 flex items-center justify-center sm:justify-start gap-1">
                   <MapPin size={12} />{currentUser.region || "Wilayah belum diatur"}
                 </p>
+                {/* ── FITUR EDIT/TAMPILAN WHATSAPP ── */}
+                <div className="pt-1 pb-2 flex justify-center sm:justify-start">
+                  {isEditingWhatsapp ? (
+                    <div className="flex gap-1.5 items-center max-w-[240px]">
+                      <input
+                        type="text"
+                        value={whatsappText}
+                        onChange={(e) => setWhatsappText(e.target.value)}
+                        placeholder="Contoh: 62812345678"
+                        className="comic-textarea text-xs py-1 px-2 w-full"
+                      />
+                      <button onClick={handleSaveWhatsapp} disabled={loadingWhatsapp} className="comic-btn bg-green-400 text-[10px] py-1 px-2 font-bold flex-shrink-0">
+                        {loadingWhatsapp ? "..." : "Ok"}
+                      </button>
+                      <button onClick={() => setIsEditingWhatsapp(false)} className="comic-btn bg-gray-200 text-[10px] py-1 px-2 flex-shrink-0">
+                        X
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setIsEditingWhatsapp(true)}
+                      className="comic-btn text-xs bg-green-400 hover:bg-green-300 font-bold py-1.5 px-3 flex items-center gap-1 group"
+                      title="Klik untuk ubah nomor"
+                    >
+                      <Phone size={12} />
+                      <span>+{currentUser.whatsapp || "Tambah No HP"}</span>
+                      <span className="text-[9px] bg-white/40 px-1 rounded ml-1 text-black/60 opacity-0 group-hover:opacity-100 transition-opacity">EDIT</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* ── FITUR EDIT BIODATA SAYA ── */}
+                <div className="text-left pt-2 border-t border-black/10">
+                  <h4 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-2">Tentang</h4>
+                  {isEditingBio ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={bioText}
+                        onChange={(e) => setBioText(e.target.value)}
+                        placeholder="Tulis biodata atau keahlian singkat dirimu..."
+                        className="comic-textarea text-xs py-1.5 px-2 w-full"
+                        rows={2}
+                        maxLength={150}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button onClick={() => setIsEditingBio(false)} className="comic-btn bg-gray-200 text-xs py-1 px-3">
+                          Batal
+                        </button>
+                        <button onClick={handleSaveBio} disabled={loadingBio} className="comic-btn bg-[var(--shinchan-yellow)] text-xs py-1 px-3 font-bold">
+                          {loadingBio ? "..." : "Simpan"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={() => setIsEditingBio(true)}
+                      className="comic-bubble bubble-left bg-[var(--shiro-white)] text-xs font-bold leading-relaxed text-gray-800 cursor-pointer hover:bg-gray-50 flex justify-between items-center w-full min-h-[40px]"
+                    >
+                      <p className={bioText ? "text-gray-800" : "text-gray-400 italic"}>
+                        {bioText || "Klik di sini untuk menulis biodata kamu..."}
+                      </p>
+                      <span className="text-[9px] bg-gray-100 px-2 py-0.5 rounded border border-black font-black ml-2 flex-shrink-0">EDIT</span>
+                    </div>
+                  )}
+                </div>
+                <div className="comic-box bg-white overflow-hidden">
+                  <div className="bg-amber-100 p-4 border-b-3 border-black">
+                    <h3 className="text-lg font-extrabold">⭐ Ulasan Saya ({myReviews.length})</h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {myReviews.length === 0 ? (
+                      <p className="text-xs text-gray-500 font-bold italic py-4 text-center bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                        Belum ada ulasan dari pengguna lain untuk Anda.
+                      </p>
+                    ) : (
+                      <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
+                        {myReviews.map(rev => (
+                          <div key={rev.id} className="p-3 border-2 border-black rounded-xl bg-white shadow-[1.5px_1.5px_0px_#000]">
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-[11px] font-extrabold">{rev.raterName}</span>
+                              <div className="flex gap-0.5 text-amber-500">
+                                {[1, 2, 3, 4, 5].map(s => (
+                                  <span key={s} className="text-xs">{s <= rev.stars ? "★" : "☆"}</span>
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-gray-700 font-medium leading-normal">{rev.comment}</p>
+                            <div className="text-[9px] text-gray-400 text-right mt-1">{rev.date}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

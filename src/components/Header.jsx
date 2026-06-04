@@ -15,7 +15,7 @@ export default function Header({ currentUser, onLoginClick, onLogout, currentVie
   return (
     <header className="mb-8">
       {/* Top Banner */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[var(--chocobi-green)] border-b-4 border-black p-4">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-[var(--shinchan-yellow)] border-b-4 border-black p-4">
         <div className="flex flex-col md:flex-row items-center gap-4">
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView("home")}>
@@ -94,10 +94,10 @@ export default function Header({ currentUser, onLoginClick, onLogout, currentVie
             ) : (
               <button onClick={onLoginClick} className="comic-btn bg-white border-3 border-black text-black font-bold flex items-center gap-2 text-xs md:text-sm">
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.14 3.08-3.08 4.14v3.44h4.97c2.9-2.67 4.58-6.6 4.58-11.43z"/>
-                  <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-4.97-3.44c-1.39.93-3.17 1.48-4.99 1.48-3.83 0-7.07-2.58-8.24-6.05H1.03v3.55C3.01 20.9 7.21 24 12 24z"/>
-                  <path fill="#FBBC05" d="M3.76 13.08a14.38 14.38 0 0 1 0-4.16V5.37H1.03a11.98 11.98 0 0 0 0 11.26l2.73-3.55z"/>
-                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.21 0 3.01 3.1 1.03 7.92l2.73 3.55c1.17-3.47 4.41-6.05 8.24-6.05z"/>
+                  <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v3.92h6.69c-.29 1.5-.14 3.08-3.08 4.14v3.44h4.97c2.9-2.67 4.58-6.6 4.58-11.43z" />
+                  <path fill="#34A853" d="M12 24c3.24 0 5.97-1.08 7.96-2.91l-4.97-3.44c-1.39.93-3.17 1.48-4.99 1.48-3.83 0-7.07-2.58-8.24-6.05H1.03v3.55C3.01 20.9 7.21 24 12 24z" />
+                  <path fill="#FBBC05" d="M3.76 13.08a14.38 14.38 0 0 1 0-4.16V5.37H1.03a11.98 11.98 0 0 0 0 11.26l2.73-3.55z" />
+                  <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.21 0 3.01 3.1 1.03 7.92l2.73 3.55c1.17-3.47 4.41-6.05 8.24-6.05z" />
                 </svg>
                 Masuk via Google
               </button>

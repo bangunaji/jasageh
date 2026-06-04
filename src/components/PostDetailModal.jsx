@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { X, Send, Trash2, MessageSquare, Phone, MapPin, Tag, Calendar } from "lucide-react";
 import { db } from "../firebase";
-import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, updateDoc, increment } from "firebase/firestore";
 
 function UserAvatar({ name, bgColor, size = "sm" }) {
   const initial = (name || "?").charAt(0).toUpperCase();
@@ -19,31 +19,47 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
   const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Real-time comments listener from Firestore
+  // Menentukan nama collection utama secara otomatis berdasarkan struktur data post
+  const collectionName = post?.whatsapp || post?.region ? "posts" : "mading";
+
+  // 1. Listener Komentar Otomatis
   useEffect(() => {
     if (!post?.id) return;
+
     const q = query(
-      collection(db, "posts", post.id, "comments"),
+      collection(db, collectionName, post.id, "comments"), // <-- Deteksi Otomatis
       orderBy("createdAt", "asc")
     );
+
     const unsub = onSnapshot(q, (snap) => {
       setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
-    return () => unsub();
-  }, [post?.id]);
 
+    return () => unsub();
+  }, [post?.id, collectionName]);
+
+  // 2. Fungsi Submit Komentar Otomatis
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!commentText.trim() || !currentUser || loading) return;
+
     setLoading(true);
     try {
-      await addDoc(collection(db, "posts", post.id, "comments"), {
+      // Menyimpan komentar ke sub-collection yang sesuai (posts atau mading)
+      await addDoc(collection(db, collectionName, post.id, "comments"), {
         userId: currentUser.uid,
         userName: currentUser.name || currentUser.displayName,
         userAvatarColor: currentUser.avatarColor || "#ffb3ba",
         text: commentText.trim(),
         createdAt: serverTimestamp(),
       });
+
+      // Update counter commentCount langsung ke target dokumen utama yang benar
+      const postRef = doc(db, collectionName, post.id);
+      await updateDoc(postRef, {
+        commentCount: increment(1)
+      });
+
       setCommentText("");
     } catch (err) {
       console.error("Gagal menambah komentar:", err);
@@ -52,9 +68,17 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     }
   };
 
+  // 3. Fungsi Hapus Komentar Otomatis
   const handleDeleteComment = async (commentId) => {
     try {
-      await deleteDoc(doc(db, "posts", post.id, "comments", commentId));
+      // Hapus dari sub-collection yang sesuai
+      await deleteDoc(doc(db, collectionName, post.id, "comments", commentId));
+
+      // Kurangi counter di dokumen utama yang sesuai
+      const postRef = doc(db, collectionName, post.id);
+      await updateDoc(postRef, {
+        commentCount: increment(-1)
+      });
     } catch (err) {
       console.error("Gagal hapus komentar:", err);
     }
@@ -122,11 +146,12 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
           </div>
 
           {/* Comments */}
-          <div className="space-y-4">
+          <div className="space-y-4 pt-4 border-t-2 border-black/10">
             <h4 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider flex items-center gap-1">
               <MessageSquare size={14} />Diskusi Komentar ({comments.length})
             </h4>
 
+            {/* List Komentar */}
             <div className="space-y-3">
               {comments.length === 0 ? (
                 <p className="text-xs text-gray-500 font-bold italic py-4 text-center bg-gray-50 border border-dashed border-gray-300 rounded-lg">
@@ -137,17 +162,21 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                   const isOwner = currentUser?.uid === comment.userId;
                   const isAdmin = currentUser?.isAdmin;
                   return (
-                    <div key={comment.id} className="p-3 border-2 border-black rounded-xl bg-white shadow-[1.5px_1.5px_0px_#000] flex justify-between items-start gap-2">
+                    <div key={comment.id} className="p-3 border-2 border-black rounded-xl bg-white shadow-[2px_2px_0px_#000] flex justify-between items-start gap-2 animate-bounce-in">
                       <div className="flex gap-2">
                         <UserAvatar name={comment.userName} bgColor={comment.userAvatarColor} size="sm" />
                         <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-extrabold">{comment.userName}</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-extrabold text-black">{comment.userName || "Anonim"}</span>
                             <span className="text-[9px] text-gray-400 font-bold">{formatDate(comment.createdAt)}</span>
                           </div>
-                          <p className="text-xs text-gray-700 font-semibold mt-0.5 leading-relaxed">{comment.content}</p>
+                          {/* Warna teks diubah ke text-gray-900 (Hitam pekat) agar terbaca jelas */}
+                          <p className="text-xs text-gray-900 font-bold mt-1 leading-relaxed break-words">
+                            {comment.text || comment.content}
+                          </p>
                         </div>
                       </div>
+
                       {(isOwner || isAdmin) && (
                         <button onClick={() => handleDeleteComment(comment.id)}
                           className="text-red-700 hover:text-red-900 p-1 hover:bg-red-50 rounded border border-transparent hover:border-red-200 transition-colors flex-shrink-0">
@@ -162,16 +191,24 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
 
             {/* Comment form */}
             {currentUser ? (
-              <form onSubmit={handleCommentSubmit} className="flex gap-2">
-                <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Ketik komentar diskusi..." className="comic-input text-xs flex-grow" maxLength={200} required />
-                <button type="submit" disabled={loading} className="comic-btn bg-[var(--shinchan-yellow)] text-xs">
-                  <Send size={14} /><span className="hidden sm:inline">{loading ? "..." : "Kirim"}</span>
+              <form onSubmit={handleCommentSubmit} className="flex gap-2 mt-4">
+                <input
+                  type="text"
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="Ketik komentar diskusi..."
+                  className="comic-input text-xs flex-grow"
+                  maxLength={200}
+                  required
+                />
+                <button type="submit" disabled={loading} className="comic-btn bg-[var(--shinchan-yellow)] text-xs font-bold">
+                  <Send size={14} />
+                  <span className="hidden sm:inline">{loading ? "..." : "Kirim"}</span>
                 </button>
               </form>
             ) : (
               <div className="p-3 bg-gray-50 border-2 border-black/10 rounded-xl text-center text-xs font-bold text-gray-500">
-                🔒 Login dengan Google untuk berkomentar.
+                🔒 Login untuk ikut berdiskusi di komentar.
               </div>
             )}
           </div>

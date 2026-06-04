@@ -33,7 +33,7 @@ export default function PostCard({ post, getUserRatingSummary, onOpenDetails, on
   return (
     <article className="comic-box bg-white overflow-hidden flex flex-col h-full">
       {/* Header */}
-      <div className="bg-[var(--comic-gray)] border-b-3 border-black p-3 flex items-center justify-between">
+      <div className="bg-[var(--shinchan-yellow)]  border-b-3 border-black p-3 flex items-center justify-between">
         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => onOpenUserProfile(post.userId)}>
           <UserAvatar name={post.userName} bgColor={post.userAvatarColor} size="sm" />
           <div>
@@ -48,7 +48,7 @@ export default function PostCard({ post, getUserRatingSummary, onOpenDetails, on
             onClick={() => onOpenUserProfile(post.userId)}>
             <Star size={10} fill="currentColor" className="text-amber-500" />
             <span>{ratingSummary.average}</span>
-            <span className="text-gray-500 font-medium">({ratingSummary.count})</span>
+            <span className="text-yellow-500 font-medium">({ratingSummary.count})</span>
           </div>
         ) : (
           <div className="text-[9px] bg-white border-2 border-black px-1.5 py-0.5 rounded-full text-gray-500 font-bold cursor-pointer"
