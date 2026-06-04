@@ -295,6 +295,7 @@ export default function App() {
     }
   };
 
+
   // ─── Rating Handler ──────────────────────────────────────────────
   const handleSubmitRating = async (targetUserId, stars, comment) => {
     if (!currentUser) return;
@@ -306,31 +307,52 @@ export default function App() {
       date: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" }),
     };
     await addDoc(collection(db, "users", targetUserId, "ratings"), ratingData);
-  };
 
-  // ─── Open User Profile ────────────────────────────────────────────
-  const handleOpenUserProfile = async (userId) => {
-    const userRef = doc(db, "users", userId);
-    const snap = await getDoc(userRef);
-    if (!snap.exists()) return;
-    const userData = { id: userId, ...snap.data() };
+    await handleOpenUserProfile(targetUserId);
 
-    // Load ratings subcollection
-    const ratingsSnap = await new Promise(resolve => {
-      const q = query(collection(db, "users", userId, "ratings"), orderBy("date", "desc"));
-      onSnapshot(q, resolve, { once: true });
-    });
-    const ratings = ratingsSnap.docs?.map(d => ({ id: d.id, ...d.data() })) || [];
-    userData.ratings = ratings;
-
-    // Increment view count if not own profile
-    if (currentUser && currentUser.uid !== userId) {
-      await updateDoc(userRef, { views: increment(1) });
+    const userRef = doc(db, "users", targetUserId);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const existingRatings = userSnap.data().ratingsCache || [];
+      const updatedRatings = [...existingRatings, { stars, raterId: currentUser.uid }];
+      const newAvg = updatedRatings.reduce((s, r) => s + r.stars, 0) / updatedRatings.length;
+      await updateDoc(userRef, {
+        ratingsCache: updatedRatings,
+        ratingAverage: parseFloat(newAvg.toFixed(1)),
+        ratingCount: updatedRatings.length,
+      });
     }
-
-    setSelectedUserProfile(userData);
   };
 
+  // ─── Open User Profile (VERSI AMAN & FIXED) ───────────────────────
+  const handleOpenUserProfile = async (userId) => {
+    if (!userId) return;
+    try {
+      const userRef = doc(db, "users", userId);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return;
+
+      const userData = { id: userId, ...snap.data() };
+
+      // Menggunakan getDocs murni untuk mengambil sub-collection ulasan pengguna lain
+      const { getDocs } = await import("firebase/firestore");
+      const q = query(collection(db, "users", userId, "ratings"), orderBy("date", "desc"));
+      const ratingsSnap = await getDocs(q);
+
+      const ratings = ratingsSnap.docs?.map(d => ({ id: d.id, ...d.data() })) || [];
+      userData.ratings = ratings;
+
+      // Increment view count jika bukan melihat profil sendiri
+      if (currentUser && currentUser.uid !== userId) {
+        await updateDoc(userRef, { views: increment(1) });
+      }
+
+      setSelectedUserProfile(userData);
+    } catch (error) {
+      console.error("Gagal memuat profil pengguna:", error);
+      alert("Gagal memuat profil pengguna.");
+    }
+  };
 
 
   // ─── Change Avatar Color ──────────────────────────────────────────
@@ -344,24 +366,23 @@ export default function App() {
     }
   };
 
-  // ─── Get Rating Summary ───────────────────────────────────────────
-  // ─── Get Rating Summary (Sempurna & Real-time) ───────────────────
+  // ─── Get Rating Summary (Versi Murni & Stabil) ───────────────────
   const getUserRatingSummary = (userId) => {
-    // 1. Kondisi KHUSUS jika yang dicari adalah ID kita sendiri (Profil Saya)
+    if (!userId) return { average: "0.0", count: 0 };
+
     if (currentUser && userId === currentUser.uid) {
-      if (!myReviews || !myReviews.length) return { average: "0.0", count: 0 };
-      const avg = (myReviews.reduce((s, r) => s + (r.stars || 0), 0) / myReviews.length).toFixed(1);
-      return { average: avg, count: myReviews.length };
+      if (!myReviews?.length) return { average: "0.0", count: 0 };
+      const avg = myReviews.reduce((s, r) => s + (r.stars || 0), 0) / myReviews.length;
+      return { average: avg.toFixed(1), count: myReviews.length };
     }
 
-    // 2. Kondisi UMUM untuk pengguna lain (membaca data array jika ada atau default 0)
-    const user = users.find(u => u.id === userId);
-    // Cek apakah di objek user ada array 'ratings' atau 'ratingsCache'
-    const ratings = user?.ratings || user?.ratingsCache || [];
-    if (!ratings.length) return { average: "0.0", count: 0 };
+    const user = Array.isArray(users) ? users.find(u => u.id === userId) : null;
 
-    const avg = (ratings.reduce((s, r) => s + (r.stars || 0), 0) / ratings.length).toFixed(1);
-    return { average: avg, count: ratings.length };
+    // ✅ Baca dari field cache, bukan sub-collection
+    const count = user?.ratingCount || 0;
+    const average = user?.ratingAverage?.toFixed(1) || "0.0";
+
+    return { average, count };
   };
 
   // ─── Filtered Posts ───────────────────────────────────────────────
@@ -587,6 +608,43 @@ export default function App() {
                 <p className="text-xs font-bold text-gray-500 flex items-center justify-center sm:justify-start gap-1">
                   <MapPin size={12} />{currentUser.region || "Wilayah belum diatur"}
                 </p>
+
+                {/* Ratings overview untuk Profil Saya */}
+                <div className="pt-2 max-w-sm mx-auto sm:mx-0 text-left">
+                  <div className="grid grid-cols-2 gap-4 items-center bg-gray-50 p-4 border-2 border-black rounded-xl shadow-[2px_2px_0px_#000]">
+                    <div className="text-center sm:border-r border-black/10 py-2">
+                      <div className="text-4xl font-black text-amber-500">
+                        {myReviews.length > 0
+                          ? (myReviews.reduce((sum, r) => sum + (r.stars || 0), 0) / myReviews.length).toFixed(1)
+                          : "0.0"}
+                      </div>
+                      <div className="flex justify-center gap-0.5 text-amber-500 mt-1">
+                        {[1, 2, 3, 4, 5].map(s => {
+                          const avg = myReviews.length > 0
+                            ? myReviews.reduce((sum, r) => sum + (r.stars || 0), 0) / myReviews.length
+                            : 0;
+                          return (
+                            <Star key={s} size={14} fill={s <= Math.round(avg) ? "currentColor" : "none"} />
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-gray-500 font-bold mt-1">dari {myReviews.length} ulasan</p>
+                    </div>
+                    <div className="p-2 space-y-1">
+                      <div className="text-[10px] font-bold text-gray-500 uppercase">Kategori:</div>
+                      <div className="flex flex-wrap gap-1">
+                        {currentUser?.categories?.length > 0 ? (
+                          currentUser.categories.map(cat => (
+                            <span key={cat} className="comic-tag bg-[var(--pastel-orange)] text-[9px]">{cat}</span>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-gray-400 font-bold">Semua Kategori</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* ── FITUR EDIT/TAMPILAN WHATSAPP ── */}
                 <div className="pt-1 pb-2 flex justify-center sm:justify-start">
                   {isEditingWhatsapp ? (

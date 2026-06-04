@@ -85,34 +85,24 @@ export default function UserProfileModal({ user, currentUser, onClose, onSubmitR
             <h4 className="text-xs font-extrabold uppercase text-gray-400 tracking-wider mb-3">Kredibilitas & Rating</h4>
             <div className="grid grid-cols-2 gap-4 items-center bg-gray-50 p-4 border-2 border-black rounded-xl shadow-[2px_2px_0px_#000]">
               <div className="text-center sm:border-r border-black/10 py-2">
-                {/* Menghitung rata-rata bintang langsung dari myReviews */}
-                <div className="text-4xl font-black text-amber-500">
-                  {myReviews.length > 0
-                    ? (myReviews.reduce((sum, r) => sum + (r.stars || 0), 0) / myReviews.length).toFixed(1)
-                    : "0.0"}
-                </div>
+                <div className="text-4xl font-black text-amber-500">{averageRating > 0 ? averageRating : "–"}</div>
                 <div className="flex justify-center gap-0.5 text-amber-500 mt-1">
-                  {[1, 2, 3, 4, 5].map(s => {
-                    const avg = myReviews.length > 0
-                      ? myReviews.reduce((sum, r) => sum + (r.stars || 0), 0) / myReviews.length
-                      : 0;
-                    return (
-                      <Star key={s} size={14} fill={s <= Math.round(avg) ? "currentColor" : "none"} />
-                    );
-                  })}
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <Star key={s} size={14} fill={s <= Math.round(averageRating) ? "currentColor" : "none"} />
+                  ))}
                 </div>
-                {/* Menggunakan panjang array myReviews secara real-time */}
-                <p className="text-[10px] text-gray-500 font-bold mt-1">dari {myReviews.length} ulasan</p>
+                <p className="text-[10px] text-gray-500 font-bold mt-1">dari {reviews.length} ulasan</p>
               </div>
               <div className="p-2 space-y-1">
                 <div className="text-[10px] font-bold text-gray-500 uppercase">Kategori:</div>
                 <div className="flex flex-wrap gap-1">
-                  {currentUser?.categories?.length > 0
-                    ? currentUser.categories.map(cat => (
+                  {user.categories?.length > 0 ? (
+                    user.categories.map(cat => (
                       <span key={cat} className="comic-tag bg-[var(--pastel-orange)] text-[9px]">{cat}</span>
                     ))
-                    : <span className="text-[10px] text-gray-400 font-bold">Semua Kategori</span>
-                  }
+                  ) : (
+                    <span className="text-[10px] text-gray-400 font-bold">Semua Kategori</span>
+                  )}
                 </div>
               </div>
             </div>
