@@ -127,34 +127,6 @@ export default function AdminPanel({
             </div>
           )}
 
-          {tab === "mading" && (
-            <div className="space-y-3">
-              {madingList.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 font-bold py-8">Belum ada mading.</p>
-              ) : (
-                madingList.map(mading => (
-                  <div key={mading.id} className="border-2 border-black rounded-xl p-3 flex justify-between items-center gap-3 bg-white shadow-[1.5px_1.5px_0px_#000]"
-                    style={{ borderLeft: `6px solid ${mading.color || "#fff79a"}` }}>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold line-clamp-2">{mading.content}</p>
-                      <p className="text-[10px] text-gray-500 font-bold mt-0.5">oleh {mading.userName}</p>
-                    </div>
-                    <button
-                      onClick={() => handleDelete("mading", mading.id)}
-                      className={`p-2 border-2 border-black rounded-lg flex-shrink-0 transition-colors ${confirmDelete?.id === mading.id
-                          ? "bg-red-500 text-white"
-                          : "bg-red-100 hover:bg-red-200"
-                        }`}
-                      title={confirmDelete?.id === mading.id ? "Klik lagi untuk konfirmasi hapus" : "Hapus mading"}
-                    >
-                      <Trash2 size={14} className={confirmDelete?.id === mading.id ? "text-white" : "text-red-700"} />
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
-
           {tab === "users" && (
             <div className="space-y-3">
               {users.map(user => (
