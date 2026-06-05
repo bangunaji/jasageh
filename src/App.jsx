@@ -140,18 +140,37 @@ export default function App() {
     }
   };
 
-  // Fungsi menyimpan perubahan nama ke Firestore
+  // Fungsi menyimpan perubahan nama ke Firestore (DENGAN VALIDASI NAMA KEMBAR)
   const handleSaveName = async () => {
-    if (!newName.trim() || !currentUser?.uid) return;
-    try {
-      const userRef = doc(db, "users", currentUser.uid);
+    const trimmedName = newName.trim();
+    if (!trimmedName || !currentUser?.uid) return;
 
+    // Jika user tidak mengubah nama (hanya klik OK tanpa ganti teks), langsung tutup
+    if (trimmedName === (currentUser.name || currentUser.displayName)) {
+      setIsEditingName(false);
+      return;
+    }
+
+    try {
+      // 1. Lakukan query ke Firestore untuk mengecek apakah nama ini sudah dipakai orang lain
+      const { getDocs, where } = await import("firebase/firestore");
+      const q = query(collection(db, "users"), where("name", "==", trimmedName));
+      const querySnapshot = await getDocs(q);
+
+      // 2. Jika ada dokumen lain yang menggunakan nama tersebut, batalkan proses
+      if (!querySnapshot.empty) {
+        alert(`Maaf, nama "${trimmedName}" sudah digunakan oleh pengguna lain. Silakan cari nama yang unik, Geh!`);
+        return;
+      }
+
+      // 3. Jika nama aman (belum dipakai), lanjutkan update ke Firestore
+      const userRef = doc(db, "users", currentUser.uid);
       await updateDoc(userRef, {
-        name: newName.trim()
+        name: trimmedName
       });
 
       // Perbarui state lokal agar UI langsung sinkron tanpa reload halaman
-      setCurrentUser(prev => ({ ...prev, name: newName.trim() }));
+      setCurrentUser(prev => ({ ...prev, name: trimmedName }));
       setIsEditingName(false);
       alert("Nama berhasil diperbarui!");
     } catch (error) {
@@ -169,6 +188,7 @@ export default function App() {
       if (firebaseUser) {
         const userRef = doc(db, "users", firebaseUser.uid);
         const snap = await getDoc(userRef);
+
         if (!snap.exists()) {
           // New user — create Firestore document
           const newUserData = {
@@ -185,11 +205,24 @@ export default function App() {
             createdAt: serverTimestamp(),
           };
           await setDoc(userRef, newUserData);
-          setCurrentUser({ uid: firebaseUser.uid, ...newUserData, isAdmin: false });
+
+          // Pastikan displayName tetap disertakan di state lokal sebagai cadangan
+          setCurrentUser({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName,
+            ...newUserData,
+            isAdmin: false
+          });
         } else {
           // Existing user — update photoURL if changed from Google
           const data = snap.data();
-          setCurrentUser({ uid: firebaseUser.uid, ...data });
+
+          // Gabungkan data Firestore dengan properti dasar dari Firebase Auth
+          setCurrentUser({
+            uid: firebaseUser.uid,
+            displayName: firebaseUser.displayName,
+            ...data
+          });
         }
       } else {
         setCurrentUser(null);
@@ -198,7 +231,6 @@ export default function App() {
     });
     return () => unsub();
   }, []);
-
   // ─── Firestore Real-time Listeners ───────────────────────────────
   useEffect(() => {
     const q = query(collection(db, "posts"), orderBy("createdAt", "desc"));

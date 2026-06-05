@@ -54,7 +54,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     return () => unsubscribe();
   }, [post?.id, collectionName]);
 
-  // Handle send comment / reply
+  // Handle send comment / reply (Menggunakan Nama Unik Baru)
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!commentText.trim() || !currentUser) return;
@@ -63,12 +63,14 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     try {
       const commentData = {
         userId: currentUser.uid,
+        // Menggunakan nama unik dari Firestore, fallback ke displayName Google jika kosong
         userName: currentUser.name || currentUser.displayName || "Anonim",
-        userAvatarColor: currentUser.userAvatarColor || "var(--pastel-blue)",
+        userAvatarColor: currentUser.avatarColor || "var(--pastel-blue)",
         text: commentText.trim(),
         createdAt: serverTimestamp(),
         parentId: replyTo ? replyTo.mainCommentId : null,
         replyToCommentId: replyTo ? replyTo.id : null,
+        // Target balasan langsung mengacu ke nama unik polosan
         replyToUserName: replyTo ? replyTo.userName : null
       };
 
@@ -198,6 +200,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                             <UserAvatar name={mainComment.userName} bgColor={mainComment.userAvatarColor} size="sm" />
                           </div>
                           <div>
+                            {/* Menampilkan nama unik tanpa tag angka tambahan */}
                             <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline" onClick={() => onOpenUserProfile(mainComment.userId)}>
                               {mainComment.userName}
                             </span>
@@ -239,17 +242,19 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                                   </div>
                                   <div>
                                     <div className="flex flex-wrap items-center gap-1">
+                                      {/* Menampilkan nama unik pengirim balasan secara polosan */}
                                       <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline" onClick={() => onOpenUserProfile(reply.userId)}>
                                         {reply.userName}
                                       </span>
 
+                                      {/* Tag Indikator Target Balasan */}
                                       {reply.replyToCommentId && reply.replyToCommentId !== mainComment.id ? (
                                         <span className="text-[9px] text-blue-600 font-bold bg-blue-50 border border-blue-200 px-1 rounded flex items-center gap-0.5">
-                                          <CornerDownRight size={8} /> @{reply.replyToUserName}
+                                          @{reply.replyToUserName}
                                         </span>
                                       ) : (
                                         <span className="text-[9px] text-gray-400 font-bold flex items-center gap-0.5 bg-gray-100 px-1 rounded">
-                                          <CornerDownRight size={8} /> membalas
+                                          membalas
                                         </span>
                                       )}
                                     </div>

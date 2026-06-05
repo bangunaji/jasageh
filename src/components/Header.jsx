@@ -4,12 +4,12 @@ import { LogIn, LogOut, ShieldAlert, MapPin } from "lucide-react";
 export default function Header({ currentUser, onLoginClick, onLogout, currentView, setCurrentView }) {
   const getCharacterDialogue = () => {
     if (!currentUser) return "Hehehe... Belum login ya? Login pakai Akun Google-mu geh!";
-    const name = currentUser.displayName || currentUser.name || "kamu";
+    const name = currentUser.name || currentUser.displayName || "kamu";
     if (currentUser.isAdmin) return "Mode Administrator Aktif. Mari jaga komunitas JasaGeh Lampung! 🔑";
     return `Halo ${name.split(" ")[0]}! Mau tawarkan jasa atau cari jasa hari ini? 😄`;
   };
 
-  const displayName = currentUser?.displayName || currentUser?.name || "User";
+  const displayName = currentUser?.name || currentUser?.displayName || "User";
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
