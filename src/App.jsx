@@ -13,6 +13,7 @@ import Header from "./components/Header";
 import PostCard from "./components/PostCard";
 import MadingBoard from "./components/MadingBoard";
 import AdminPanel from "./components/AdminPanel";
+import AnnouncementBanner from "./components/AnnouncementBanner";
 import UserProfileModal from "./components/UserProfileModal";
 import PostDetailModal from "./components/PostDetailModal";
 
@@ -64,6 +65,7 @@ export default function App() {
   // Data state
   const [posts, setPosts] = useState([]);
   const [madingList, setMadingList] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [users, setUsers] = useState([]);
 
   // UI state
@@ -261,6 +263,13 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const q = query(collection(db, "announcements"), orderBy("createdAt", "desc"));
+    return onSnapshot(q, (snap) => {
+      setAnnouncements(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+  }, []);
+
+  useEffect(() => {
     return onSnapshot(collection(db, "users"), (snap) => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -360,6 +369,17 @@ export default function App() {
     }
   };
 
+  const handleAddAnnouncement = async (text, color) => {
+    await addDoc(collection(db, "announcements"), {
+      text,
+      color,
+      createdAt: serverTimestamp(),
+    });
+  };
+
+  const handleDeleteAnnouncement = async (announcementId) => {
+    await deleteDoc(doc(db, "announcements", announcementId));
+  };
 
   // ─── Rating Handler ──────────────────────────────────────────────
   const handleSubmitRating = async (targetUserId, stars, comment) => {
@@ -503,169 +523,172 @@ export default function App() {
 
       {/* ── HOME VIEW ── */}
       {currentView === "home" && (
-        <main className="max-w-6xl mx-auto px-4">
-          {/* Hero */}
-          <div className="comic-box bg-[var(--shinchan-yellow)] p-6 mb-8 text-center rotate-[-0.5deg] hover:rotate-0 transition-all">
-            <h1 className="text-3xl md:text-4xl font-extrabold mb-2">
-              🎒 JasaGeh Lampung!
-            </h1>
-            <p className="text-sm md:text-base font-bold text-gray-700 max-w-xl mx-auto">
-              Platform pertemuan jasa <strong>Provinsi Lampung</strong>. Tawarkan keahlianmu atau temukan orang yang kamu butuhkan!
-            </p>
-            {currentUser && (
-              <button onClick={() => setShowAddPostForm(!showAddPostForm)}
-                className="comic-btn bg-[var(--shinchan-red)] text-white mt-4 mx-auto font-extrabold text-sm">
-                <Plus size={18} />
-                {showAddPostForm ? "Batal" : "Buat Postingan Baru"}
-              </button>
-            )}
-          </div>
-
-          {/* Add Post Form */}
-          {showAddPostForm && currentUser && (
-            <div className="comic-box bg-white p-6 mb-8 animate-bounce-in">
-              <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
-                ✏️ Buat Postingan Baru
-              </h3>
-              <form onSubmit={handleAddPost} className="space-y-4">
-                {/* Type selection */}
-                <div>
-                  <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-2">Tipe Postingan</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button type="button"
-                      onClick={() => setNewPost(p => ({ ...p, type: "offer" }))}
-                      className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
-          ${newPost.type === "offer"
-                          ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
-                          : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
-                        }`}
-                    >
-                      🙋‍♂️ Saya Tawarkan Jasa
-                    </button>
-                    <button type="button"
-                      onClick={() => setNewPost(p => ({ ...p, type: "need" }))}
-                      className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
-          ${newPost.type === "need"
-                          ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
-                          : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
-                        }`}
-                    >
-                      🔍 Saya Cari Jasa
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Judul</label>
-                    <input type="text" value={newPost.title} onChange={e => setNewPost(p => ({ ...p, title: e.target.value }))}
-                      className="comic-input text-sm" placeholder="Contoh: Jasa Edit Video Profesional" maxLength={80} required />
-                  </div>
-                  {/* Tambahkan input Harga di bawah input WhatsApp */}
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Harga (Rp)</label>
-                    <input type="number"
-                      value={newPost.price}
-                      onChange={e => setNewPost(p => ({ ...p, price: e.target.value }))}
-                      className="comic-input text-sm" placeholder="Contoh: 50000" required />
-                  </div>
-
-                  {/* Modifikasi input WhatsApp agar user tahu formatnya */}
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">No. WhatsApp (Awali 62)</label>
-                    <input type="text"
-                      value={newPost.whatsapp}
-                      onChange={e => {
-                        const val = e.target.value.replace(/[^0-9]/g, ""); // Hanya angka
-                        setNewPost(p => ({ ...p, whatsapp: val }));
-                      }}
-                      className="comic-input text-sm" placeholder="628xxxxxxxxxx" required />
-                    {newPost.whatsapp && !newPost.whatsapp.startsWith("62") && (
-                      <p className="text-[10px] text-red-600 font-bold mt-1">⚠️ Harus diawali 62 (contoh: 62812...)</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Kategori</label>
-                    <select value={newPost.category} onChange={e => setNewPost(p => ({ ...p, category: e.target.value }))}
-                      className="comic-select text-sm" required>
-                      <option value="">Pilih kategori...</option>
-                      {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Wilayah Lampung</label>
-                    <select value={newPost.region} onChange={e => setNewPost(p => ({ ...p, region: e.target.value }))}
-                      className="comic-select text-sm" required>
-                      <option value="">Pilih wilayah...</option>
-                      {REGIONS.slice(1).map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Deskripsi</label>
-                  <textarea value={newPost.description} onChange={e => setNewPost(p => ({ ...p, description: e.target.value }))}
-                    className="comic-textarea text-sm" rows={4} maxLength={600}
-                    placeholder="Jelaskan jasa/kebutuhan kamu secara detail..." required />
-                </div>
-                <div className="flex gap-3 justify-end pt-2">
-                  <button type="button" onClick={() => setShowAddPostForm(false)} className="comic-btn bg-white text-sm">Batal</button>
-                  <button type="submit" className="comic-btn bg-[var(--shinchan-red)] text-white font-extrabold text-sm">
-                    <Plus size={16} /> Posting Sekarang!
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {/* Filters */}
-          <div className="comic-box bg-white p-4 mb-6">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="flex-grow relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                  className="comic-input pl-9 text-sm" placeholder="Cari jasa, keahlian, kata kunci..." />
-              </div>
-              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="comic-select text-sm md:w-52">
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)} className="comic-select text-sm md:w-52">
-                {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-              {(searchQuery || filterCategory !== "Semua Kategori" || filterRegion !== "Semua Wilayah") && (
-                <button onClick={() => { setSearchQuery(""); setFilterCategory("Semua Kategori"); setFilterRegion("Semua Wilayah"); }}
-                  className="comic-btn bg-white text-xs"><X size={14} /> Reset</button>
+        <>
+          <AnnouncementBanner announcements={announcements} />
+          <main className="max-w-6xl mx-auto px-4">
+            {/* Hero */}
+            <div className="comic-box bg-[var(--shinchan-yellow)] p-6 mb-8 text-center rotate-[-0.5deg] hover:rotate-0 transition-all">
+              <h1 className="text-3xl md:text-4xl font-extrabold mb-2">
+                🎒 JasaGeh Lampung!
+              </h1>
+              <p className="text-sm md:text-base font-bold text-gray-700 max-w-xl mx-auto">
+                Platform pertemuan jasa <strong>Provinsi Lampung</strong>. Tawarkan keahlianmu atau temukan orang yang kamu butuhkan!
+              </p>
+              {currentUser && (
+                <button onClick={() => setShowAddPostForm(!showAddPostForm)}
+                  className="comic-btn bg-[var(--shinchan-red)] text-white mt-4 mx-auto font-extrabold text-sm">
+                  <Plus size={18} />
+                  {showAddPostForm ? "Batal" : "Buat Postingan Baru"}
+                </button>
               )}
             </div>
-          </div>
 
-          {/* Tabs */}
-          <div className="flex border-3 border-black rounded-xl overflow-hidden mb-6 shadow-[3px_3px_0px_#000]">
-            <button onClick={() => setActiveTab("offer")}
-              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "offer" ? "bg-[var(--shinchan-yellow)] border-r-2 border-black" : "bg-white hover:bg-gray-50 border-r-2 border-black"}`}>
-              🙋‍♂️ Tawarkan Jasa
-            </button>
-            <button onClick={() => setActiveTab("need")}
-              className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "need" ? "bg-[var(--shinchan-yellow)]" : "bg-white hover:bg-gray-50"}`}>
-              🔍 Cari Jasa
-            </button>
-          </div>
+            {/* Add Post Form */}
+            {showAddPostForm && currentUser && (
+              <div className="comic-box bg-white p-6 mb-8 animate-bounce-in">
+                <h3 className="text-xl font-extrabold mb-5 flex items-center gap-2">
+                  ✏️ Buat Postingan Baru
+                </h3>
+                <form onSubmit={handleAddPost} className="space-y-4">
+                  {/* Type selection */}
+                  <div>
+                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-2">Tipe Postingan</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button type="button"
+                        onClick={() => setNewPost(p => ({ ...p, type: "offer" }))}
+                        className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
+          ${newPost.type === "offer"
+                            ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
+                            : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
+                          }`}
+                      >
+                        🙋‍♂️ Saya Tawarkan Jasa
+                      </button>
+                      <button type="button"
+                        onClick={() => setNewPost(p => ({ ...p, type: "need" }))}
+                        className={`comic-btn py-3 justify-center text-sm transition-all duration-200 
+          ${newPost.type === "need"
+                            ? "border-black scale-[1.02] shadow-[4px_4px_0px_#000] font-black"
+                            : "bg-white text-gray-600 border-gray-300 opacity-70 hover:opacity-100 hover:border-black hover:scale-[1.01]"
+                          }`}
+                      >
+                        🔍 Saya Cari Jasa
+                      </button>
+                    </div>
+                  </div>
 
-          {/* Post Grid */}
-          {filteredPosts.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-5xl mb-3">🔍</p>
-              <h3 className="text-xl font-extrabold">Postingan tidak ditemukan</h3>
-              <p className="text-sm text-gray-500 font-bold mt-1">Coba ubah filter atau kata kunci pencarian.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Judul</label>
+                      <input type="text" value={newPost.title} onChange={e => setNewPost(p => ({ ...p, title: e.target.value }))}
+                        className="comic-input text-sm" placeholder="Contoh: Jasa Edit Video Profesional" maxLength={80} required />
+                    </div>
+                    {/* Tambahkan input Harga di bawah input WhatsApp */}
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Harga (Rp)</label>
+                      <input type="number"
+                        value={newPost.price}
+                        onChange={e => setNewPost(p => ({ ...p, price: e.target.value }))}
+                        className="comic-input text-sm" placeholder="Contoh: 50000" required />
+                    </div>
+
+                    {/* Modifikasi input WhatsApp agar user tahu formatnya */}
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">No. WhatsApp (Awali 62)</label>
+                      <input type="text"
+                        value={newPost.whatsapp}
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, ""); // Hanya angka
+                          setNewPost(p => ({ ...p, whatsapp: val }));
+                        }}
+                        className="comic-input text-sm" placeholder="628xxxxxxxxxx" required />
+                      {newPost.whatsapp && !newPost.whatsapp.startsWith("62") && (
+                        <p className="text-[10px] text-red-600 font-bold mt-1">⚠️ Harus diawali 62 (contoh: 62812...)</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Kategori</label>
+                      <select value={newPost.category} onChange={e => setNewPost(p => ({ ...p, category: e.target.value }))}
+                        className="comic-select text-sm" required>
+                        <option value="">Pilih kategori...</option>
+                        {CATEGORIES.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Wilayah Lampung</label>
+                      <select value={newPost.region} onChange={e => setNewPost(p => ({ ...p, region: e.target.value }))}
+                        className="comic-select text-sm" required>
+                        <option value="">Pilih wilayah...</option>
+                        {REGIONS.slice(1).map(r => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Deskripsi</label>
+                    <textarea value={newPost.description} onChange={e => setNewPost(p => ({ ...p, description: e.target.value }))}
+                      className="comic-textarea text-sm" rows={4} maxLength={600}
+                      placeholder="Jelaskan jasa/kebutuhan kamu secara detail..." required />
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <button type="button" onClick={() => setShowAddPostForm(false)} className="comic-btn bg-white text-sm">Batal</button>
+                    <button type="submit" className="comic-btn bg-[var(--shinchan-red)] text-white font-extrabold text-sm">
+                      <Plus size={16} /> Posting Sekarang!
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Filters */}
+            <div className="comic-box bg-white p-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex-grow relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                    className="comic-input pl-9 text-sm" placeholder="Cari jasa, keahlian, kata kunci..." />
+                </div>
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="comic-select text-sm md:w-52">
+                  {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <select value={filterRegion} onChange={e => setFilterRegion(e.target.value)} className="comic-select text-sm md:w-52">
+                  {REGIONS.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+                {(searchQuery || filterCategory !== "Semua Kategori" || filterRegion !== "Semua Wilayah") && (
+                  <button onClick={() => { setSearchQuery(""); setFilterCategory("Semua Kategori"); setFilterRegion("Semua Wilayah"); }}
+                    className="comic-btn bg-white text-xs"><X size={14} /> Reset</button>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPosts.map(post => (
-                <PostCard key={post.id} post={post} getUserRatingSummary={getUserRatingSummary}
-                  onOpenDetails={(p) => setSelectedPost(p)} onOpenUserProfile={handleOpenUserProfile} />
-              ))}
+
+            {/* Tabs */}
+            <div className="flex border-3 border-black rounded-xl overflow-hidden mb-6 shadow-[3px_3px_0px_#000]">
+              <button onClick={() => setActiveTab("offer")}
+                className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "offer" ? "bg-[var(--shinchan-yellow)] border-r-2 border-black" : "bg-white hover:bg-gray-50 border-r-2 border-black"}`}>
+                🙋‍♂️ Tawarkan Jasa
+              </button>
+              <button onClick={() => setActiveTab("need")}
+                className={`flex-1 py-3 font-extrabold text-sm transition-colors ${activeTab === "need" ? "bg-[var(--shinchan-yellow)]" : "bg-white hover:bg-gray-50"}`}>
+                🔍 Cari Jasa
+              </button>
             </div>
-          )}
-        </main>
+
+            {/* Post Grid */}
+            {filteredPosts.length === 0 ? (
+              <div className="text-center py-16">
+                <p className="text-5xl mb-3">🔍</p>
+                <h3 className="text-xl font-extrabold">Postingan tidak ditemukan</h3>
+                <p className="text-sm text-gray-500 font-bold mt-1">Coba ubah filter atau kata kunci pencarian.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPosts.map(post => (
+                  <PostCard key={post.id} post={post} getUserRatingSummary={getUserRatingSummary}
+                    onOpenDetails={(p) => setSelectedPost(p)} onOpenUserProfile={handleOpenUserProfile} />
+                ))}
+              </div>
+            )}
+          </main>
+        </>
       )}
 
       {/* ── MADING VIEW ── */}
@@ -679,10 +702,13 @@ export default function App() {
           posts={posts}
           users={users}
           madingList={madingList}
+          announcements={announcements}
           onDeletePost={handleDeletePost}
           onDeleteMading={handleDeleteMading}
-          onUpdateUser={handleUpdateUserByAdmin} // Tambahkan ini
-          onDeleteUser={handleDeleteUserByAdmin} // Tambahkan ini
+          onUpdateUser={handleUpdateUserByAdmin}
+          onDeleteUser={handleDeleteUserByAdmin}
+          onAddAnnouncement={handleAddAnnouncement}
+          onDeleteAnnouncement={handleDeleteAnnouncement}
         />
       )}
 
