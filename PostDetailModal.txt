@@ -3,27 +3,6 @@ import { X, Send, Trash2, MessageSquare, Phone, MapPin, Tag, Calendar, CornerDow
 import { db } from "../firebase";
 import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, updateDoc, increment } from "firebase/firestore";
 
-// ─── 1. FUNGSI PENOLONG HIGHLIGHT MENTION ───
-// Berfungsi merubah teks @nama menjadi warna biru tebal bergaya komik
-const renderCommentText = (text) => {
-  if (!text) return "";
-
-  // Regex untuk mendeteksi kata yang diawali dengan @
-  const mentionRegex = /(@[a-zA-Z0-9_\s.]+)/g;
-  const parts = text.split(mentionRegex);
-
-  return parts.map((part, index) => {
-    if (part.match(mentionRegex)) {
-      return (
-        <span key={index} className="text-blue-600 font-black bg-blue-50 px-1 py-0.5 rounded border border-blue-200 inline-block text-[11px]">
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
-};
-
 function UserAvatar({ name, bgColor, size = "sm" }) {
   const initial = (name || "?").charAt(0).toUpperCase();
   const sizeClass = size === "md" ? "w-12 h-12 text-xl" : "w-8 h-8 text-sm";
@@ -39,11 +18,14 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
-  const [replyTo, setReplyTo] = useState(null);
 
+  // ─── STATE BARU UNTUK SELEKSI REPLY ───
+  const [replyTo, setReplyTo] = useState(null); // Menyimpan objek: { id: commentId, userName: string }
+
+  // Menentukan nama collection utama secara otomatis berdasarkan struktur data post
   const collectionName = post?.whatsapp || post?.region ? "posts" : "mading";
 
-  // Fetch comments real-time
+  // 1. Fetch comments real-time
   useEffect(() => {
     if (!post?.id) return;
     const q = query(collection(db, collectionName, post.id, "comments"), orderBy("createdAt", "asc"));
@@ -54,7 +36,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     return () => unsubscribe();
   }, [post?.id, collectionName]);
 
-  // Handle send comment / reply
+  // 2. Handle send comment / reply
   const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!commentText.trim() || !currentUser) return;
@@ -67,15 +49,22 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
         userAvatarColor: currentUser.userAvatarColor || "var(--pastel-blue)",
         text: commentText.trim(),
         createdAt: serverTimestamp(),
+
+        // PARENT ID: Tetap arahkan ke ID komentar paling atas (Bagas) 
+        // supaya struktur UI tidak menjorok terlalu dalam dan merusak layout komik.
         parentId: replyTo ? replyTo.mainCommentId : null,
+
+        // DETAIL TARGET: Menyimpan data spesifik komentar/balasan siapa yang diklik
         replyToCommentId: replyTo ? replyTo.id : null,
         replyToUserName: replyTo ? replyTo.userName : null
       };
 
       await addDoc(collection(db, collectionName, post.id, "comments"), commentData);
+
       await updateDoc(doc(db, collectionName, post.id), {
         commentCount: increment(1)
       });
+
       setCommentText("");
       setReplyTo(null);
     } catch (error) {
@@ -85,7 +74,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     }
   };
 
-  // Handle delete comment / reply
+  // 3. Handle delete comment / reply
   const handleCommentDelete = async (commentId) => {
     if (!window.confirm("Hapus komentar ini?")) return;
     try {
@@ -93,6 +82,8 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
       await updateDoc(doc(db, collectionName, post.id), {
         commentCount: increment(-1)
       });
+
+      // Jika komentar utama yang dihapus kebetulan sedang aktif di-reply, bersihkan input box
       if (replyTo && replyTo.id === commentId) {
         setReplyTo(null);
       }
@@ -116,6 +107,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
       ? new Date(post.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
       : "";
 
+  // Pisahkan ulasan utama (yang tidak punya parentId)
   const mainComments = comments.filter(c => !c.parentId);
 
   return (
@@ -186,6 +178,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                 <p className="text-center text-xs text-gray-400 font-bold py-6">Belum ada diskusi, yuk mulai bertanya!</p>
               ) : (
                 mainComments.map((mainComment) => {
+                  // Filter komentar balasan yang memiliki parentId sepadan dengan komentar utama ini
                   const replies = comments.filter(c => c.parentId === mainComment.id);
 
                   return (
@@ -201,18 +194,16 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                             <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline" onClick={() => onOpenUserProfile(mainComment.userId)}>
                               {mainComment.userName}
                             </span>
-                            <p className="text-xs text-gray-700 mt-0.5 bg-white px-2 py-1 border border-black/10 rounded-md shadow-sm">
-                              {renderCommentText(mainComment.text)}
-                            </p>
+                            <p className="text-xs text-gray-700 mt-0.5 bg-white px-2 py-1 border border-black/10 rounded-md shadow-sm">{mainComment.text}</p>
 
                             {/* Tombol Aksi Reply Komentar Utama */}
                             {currentUser && (
                               <button
                                 type="button"
-                                onClick={() => setReplyTo({ id: mainComment.id, mainCommentId: mainComment.id, userName: mainComment.userName })}
+                                onClick={() => setReplyTo({ id: mainComment.id, userName: mainComment.userName })}
                                 className="text-[10px] text-blue-600 font-extrabold mt-1 hover:underline flex items-center gap-0.5"
                               >
-                                Balas
+                                Balas (Reply)
                               </button>
                             )}
                           </div>
@@ -232,6 +223,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                           {replies.map((reply) => (
                             <div key={reply.id} className="flex flex-col bg-white/70 p-2 border border-black/10 rounded-lg shadow-inner gap-1">
 
+                              {/* Baris Atas: Profil, Isi Teks, dan Tombol Hapus */}
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex items-start gap-2">
                                   <div className="cursor-pointer mt-0.5" onClick={() => onOpenUserProfile(reply.userId)}>
@@ -243,6 +235,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                                         {reply.userName}
                                       </span>
 
+                                      {/* Indikator Tag Dinamis: Menunjukkan siapa spesifik yang dibalas di dalam thread */}
                                       {reply.replyToCommentId && reply.replyToCommentId !== mainComment.id ? (
                                         <span className="text-[9px] text-blue-600 font-bold bg-blue-50 border border-blue-200 px-1 rounded flex items-center gap-0.5">
                                           <CornerDownRight size={8} /> @{reply.replyToUserName}
@@ -265,16 +258,16 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                                 )}
                               </div>
 
-                              {/* Tombol Balas Spesifik untuk Setiap Balasan (Threaded) */}
+                              {/* Baris Bawah: Tombol Balas Spesifik untuk Setiap Balasan (Threaded) */}
                               {currentUser && (
                                 <div className="pl-10">
                                   <button
                                     type="button"
                                     onClick={() => {
                                       setReplyTo({
-                                        id: reply.id,
-                                        mainCommentId: mainComment.id,
-                                        userName: reply.userName
+                                        id: reply.id,                 // Menargetkan ID balasan pengirim secara spesifik
+                                        mainCommentId: mainComment.id,// Tetap mengelompok di induk utama (Bagas)
+                                        userName: reply.userName      // Target teks @mention
                                       });
                                       setCommentText(`@${reply.userName} `);
                                     }}

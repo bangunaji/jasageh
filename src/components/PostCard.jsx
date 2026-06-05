@@ -62,10 +62,10 @@ export default function PostCard({ post, getUserRatingSummary, onOpenDetails, on
       <div className="p-4 flex-grow flex flex-col justify-between">
         <div>
           <div className="flex flex-wrap gap-1.5 mb-3">
-            <span className={`comic-tag text-[9px] ${post.type === "offer" ? "bg-[var(--chocobi-green)] text-green-900 border-green-900" : "bg-[var(--pastel-pink)] text-red-900 border-red-900"}`}>
+            <span className={`comic-tag text-[9px] ${post.type === "offer" ? "bg-[var(--shinchan-yellow)] text-black-900 border-black-900" : "bg-[var(--shinchan-yellow)] text-black-900 border-black-900"}`}>
               {post.type === "offer" ? "🙋‍♂️ Tawarkan Jasa" : "🔍 Cari Jasa"}
             </span>
-            <span className="comic-tag bg-[var(--pastel-blue)] text-blue-900 border-blue-900 text-[9px]">
+            <span className="comic-tag bg-[var(--shinchan-yellow)] text-black-900 border-black-900 text-[9px]">
               <Tag size={8} />{post.category}
             </span>
           </div>
