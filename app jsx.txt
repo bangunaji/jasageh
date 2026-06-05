@@ -281,23 +281,34 @@ export default function App() {
     setCurrentView("home");
   };
 
-  // ─── Post Handlers ───────────────────────────────────────────────
   const handleAddPost = async (e) => {
     e.preventDefault();
     if (!currentUser) return;
-    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.region || !newPost.whatsapp) {
-      alert("Harap isi semua field!"); return;
+
+    // 1. Validasi Tambahan: Pastikan WhatsApp dimulai dengan 62
+    if (!newPost.whatsapp.startsWith("62")) {
+      alert("Nomor WhatsApp harus dimulai dengan format 62 (contoh: 62812...)");
+      return;
     }
+
+    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.region || !newPost.whatsapp || !newPost.price) {
+      alert("Harap isi semua field, termasuk harga!");
+      return;
+    }
+
     try {
       await addDoc(collection(db, "posts"), {
         ...newPost,
+        price: Number(newPost.price), // 2. Simpan harga sebagai angka (Number)
         userId: currentUser.uid,
         userName: currentUser.name || currentUser.displayName,
         userAvatarColor: currentUser.avatarColor || "#ffb3ba",
         commentCount: 0,
         createdAt: serverTimestamp(),
       });
-      setNewPost({ title: "", description: "", category: "", region: "", whatsapp: "", type: "offer" });
+
+      // 3. Reset form termasuk price
+      setNewPost({ title: "", description: "", category: "", region: "", whatsapp: "", price: "", type: "offer" });
       setShowAddPostForm(false);
     } catch (err) {
       console.error("Gagal tambah postingan:", err);
@@ -420,6 +431,31 @@ export default function App() {
     }
   };
 
+  // --- FUNGSI-FUNGSI ADMIN PANEL ---
+
+  const handleUpdateUserByAdmin = async (userId, data) => {
+    try {
+      const userRef = doc(db, "users", userId);
+      await updateDoc(userRef, data);
+      alert("Data user berhasil diperbarui!");
+    } catch (err) {
+      console.error("Gagal update user:", err);
+    }
+  };
+
+  const handleDeleteUserByAdmin = async (userId) => {
+    if (window.confirm("Yakin ingin menghapus user ini secara permanen?")) {
+      try {
+        await deleteDoc(doc(db, "users", userId));
+        alert("User berhasil dihapus.");
+      } catch (err) {
+        console.error("Gagal hapus user:", err);
+      }
+    }
+  };
+
+  // Pastikan fungsi handleDeletePost dan handleDeleteMading juga sudah ada
+
   // ─── Get Rating Summary (Versi Murni & Stabil) ───────────────────
   const getUserRatingSummary = (userId) => {
     if (!userId) return { average: "0.0", count: 0 };
@@ -525,10 +561,28 @@ export default function App() {
                     <input type="text" value={newPost.title} onChange={e => setNewPost(p => ({ ...p, title: e.target.value }))}
                       className="comic-input text-sm" placeholder="Contoh: Jasa Edit Video Profesional" maxLength={80} required />
                   </div>
+                  {/* Tambahkan input Harga di bawah input WhatsApp */}
                   <div>
-                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">No. WhatsApp</label>
-                    <input type="tel" value={newPost.whatsapp} onChange={e => setNewPost(p => ({ ...p, whatsapp: e.target.value }))}
+                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Harga (Rp)</label>
+                    <input type="number"
+                      value={newPost.price}
+                      onChange={e => setNewPost(p => ({ ...p, price: e.target.value }))}
+                      className="comic-input text-sm" placeholder="Contoh: 50000" required />
+                  </div>
+
+                  {/* Modifikasi input WhatsApp agar user tahu formatnya */}
+                  <div>
+                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">No. WhatsApp (Awali 62)</label>
+                    <input type="text"
+                      value={newPost.whatsapp}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9]/g, ""); // Hanya angka
+                        setNewPost(p => ({ ...p, whatsapp: val }));
+                      }}
                       className="comic-input text-sm" placeholder="628xxxxxxxxxx" required />
+                    {newPost.whatsapp && !newPost.whatsapp.startsWith("62") && (
+                      <p className="text-[10px] text-red-600 font-bold mt-1">⚠️ Harus diawali 62 (contoh: 62812...)</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Kategori</label>
@@ -620,10 +674,16 @@ export default function App() {
           onAddMading={handleAddMading} onDeleteMading={handleDeleteMading} onLikeMading={handleLikeMading} />
       )}
 
-      {/* ── ADMIN VIEW ── */}
       {currentView === "admin" && currentUser?.isAdmin && (
-        <AdminPanel posts={posts} users={users} madingList={madingList}
-          onDeletePost={handleDeletePost} onDeleteMading={handleDeleteMading} />
+        <AdminPanel
+          posts={posts}
+          users={users}
+          madingList={madingList}
+          onDeletePost={handleDeletePost}
+          onDeleteMading={handleDeleteMading}
+          onUpdateUser={handleUpdateUserByAdmin} // Tambahkan ini
+          onDeleteUser={handleDeleteUserByAdmin} // Tambahkan ini
+        />
       )}
 
       {/* ── PROFILE VIEW ── */}

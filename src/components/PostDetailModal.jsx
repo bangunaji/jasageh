@@ -146,14 +146,14 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
           <div>
             <div className="flex flex-wrap gap-1.5 mb-3">
               {post.type && (
-                <span className={`comic-tag text-[9px] ${post.type === "offer" ? "bg-[var(--chocobi-green)] text-green-900 border-green-900" : "bg-[var(--pastel-pink)] text-red-900 border-red-900"}`}>
+                <span className={`comic-tag text-[9px] ${post.type === "offer" ? "bg-[var(--shinchan-yellow)]  text-black-900 border-black-900" : "bg-[var(--shinchan-yellow)]  text-black-900 border-black-900"}`}>
                   {post.type === "offer" ? "🙋‍♂️ Tawarkan Jasa" : "🔍 Cari Jasa"}
                 </span>
               )}
-              <span className="comic-tag bg-[var(--pastel-blue)] text-blue-900 border-blue-900 text-[9px]">
+              <span className="comic-tag bg-[var(--shinchan-yellow)] text-black-900 border-black-900 text-[9px]">
                 <Tag size={8} />{post.category}
               </span>
-              <span className="comic-tag bg-gray-100 text-gray-700 border-gray-400 text-[9px]">
+              <span className="comic-tag bg-yellow-100 text-black-700 border-black-400 text-[9px]">
                 <Calendar size={8} />{formattedDate}
               </span>
             </div>
@@ -204,7 +204,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                             <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline" onClick={() => onOpenUserProfile(mainComment.userId)}>
                               {mainComment.userName}
                             </span>
-                            <p className="text-xs text-gray-700 mt-0.5 bg-white px-2 py-1 border border-black/10 rounded-md shadow-sm">
+                            <p className="text-xs text-gray-700 mt-0.5 bg-white px-2 py-1 border border-black/10 rounded-md shadow-sm break-all">
                               {renderCommentText(mainComment.text)}
                             </p>
 
@@ -241,24 +241,24 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
                                     <UserAvatar name={reply.userName} bgColor={reply.userAvatarColor} size="sm" />
                                   </div>
                                   <div>
-                                    <div className="flex flex-wrap items-center gap-1">
+                                    <div className="flex flex-wrap items-center gap-1 min-w-0">
                                       {/* Menampilkan nama unik pengirim balasan secara polosan */}
-                                      <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline" onClick={() => onOpenUserProfile(reply.userId)}>
+                                      <span className="text-xs font-black text-gray-900 cursor-pointer hover:underline break-all" onClick={() => onOpenUserProfile(reply.userId)}>
                                         {reply.userName}
                                       </span>
 
                                       {/* Tag Indikator Target Balasan */}
                                       {reply.replyToCommentId && reply.replyToCommentId !== mainComment.id ? (
-                                        <span className="text-[9px] text-blue-600 font-bold bg-blue-50 border border-blue-200 px-1 rounded flex items-center gap-0.5">
+                                        <span className="text-[9px] text-blue-600 font-bold bg-blue-50 border border-blue-200 px-1 rounded flex items-center gap-0.5 break-all">
                                           @{reply.replyToUserName}
                                         </span>
                                       ) : (
-                                        <span className="text-[9px] text-gray-400 font-bold flex items-center gap-0.5 bg-gray-100 px-1 rounded">
+                                        <span className="text-[9px] text-gray-400 font-bold flex items-center gap-0.5 bg-gray-100 px-1 rounded break-all">
                                           membalas
                                         </span>
                                       )}
                                     </div>
-                                    <p className="text-xs text-gray-700 mt-0.5">{renderCommentText(reply.text)}</p>
+                                    <p className="text-xs text-gray-700 mt-0.5 break-all">{renderCommentText(reply.text)}</p>
                                   </div>
                                 </div>
 
