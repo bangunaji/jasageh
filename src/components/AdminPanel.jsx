@@ -141,13 +141,17 @@ export default function AdminPanel({
                     </div>
                     <button
                       onClick={() => handleDelete("mading", mading.id)}
-                      className={`p-2 border-2 border-black rounded-lg flex-shrink-0 transition-colors ${confirmDelete?.id === mading.id
-                          ? "bg-red-500 text-white"
+                      className={`p-2 border-2 border-black rounded-lg flex-shrink-0 transition-all ${confirmDelete?.id === mading.id
+                          ? "bg-red-500 text-white scale-105 shadow-[2px_2px_0px_#000]"
                           : "bg-red-100 hover:bg-red-200"
                         }`}
-                      title={confirmDelete?.id === mading.id ? "Klik lagi untuk konfirmasi hapus" : "Hapus mading"}
+                      title={confirmDelete?.id === mading.id ? "Klik lagi untuk konfirmasi!" : "Hapus mading"}
                     >
-                      <Trash2 size={14} className={confirmDelete?.id === mading.id ? "text-white" : "text-red-700"} />
+                      {confirmDelete?.id === mading.id ? (
+                        <span className="text-[10px] font-black px-1">Yakin?</span>
+                      ) : (
+                        <Trash2 size={14} className="text-red-700" />
+                      )}
                     </button>
                   </div>
                 ))
