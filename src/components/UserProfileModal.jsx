@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { X, Star, Eye, Send, Phone, MapPin, Tag } from "lucide-react";
+import { X, Star, Eye, Send, MapPin, Tag } from "lucide-react";
 
 function UserAvatar({ name, bgColor, size = "lg" }) {
   const initial = (name || "?").charAt(0).toUpperCase();
@@ -12,7 +12,7 @@ function UserAvatar({ name, bgColor, size = "lg" }) {
   );
 }
 
-export default function UserProfileModal({ user, currentUser, onClose, onSubmitRating }) {
+export default function UserProfileModal({ user, currentUser, onClose, onSubmitRating, onOpenChat }) {
   const [ratingStars, setRatingStars] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -64,10 +64,17 @@ export default function UserProfileModal({ user, currentUser, onClose, onSubmitR
                 </span>
               </div>
               <div className="pt-1">
-                <a href={`https://wa.me/${user.whatsapp}`} target="_blank" rel="noopener noreferrer"
-                  className="comic-btn text-xs bg-green-400 hover:bg-green-300 font-bold py-1.5 px-3">
-                  <Phone size={12} /><span>+{user.whatsapp}</span>
-                </a>
+                {currentUser && currentUser.uid !== user.id ? (
+                  <button onClick={() => onOpenChat && onOpenChat(user)}
+                    className="comic-btn text-xs bg-blue-400 hover:bg-blue-300 font-bold py-1.5 px-3">
+                    <Send size={12} /><span>Kirim DM</span>
+                  </button>
+                ) : user.whatsapp && (
+                  <a href={`https://wa.me/${user.whatsapp}`} target="_blank" rel="noopener noreferrer"
+                    className="comic-btn text-xs bg-green-400 hover:bg-green-300 font-bold py-1.5 px-3">
+                    <Send size={12} /><span>+{user.whatsapp}</span>
+                  </a>
+                )}
               </div>
             </div>
           </div>

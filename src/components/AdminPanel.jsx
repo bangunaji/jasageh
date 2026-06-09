@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ShieldAlert, Trash2, Users, FileText, Megaphone,
-  BarChart3, AlertTriangle, Edit2, Check, X, Shield, Plus, Bell
+  BarChart3, AlertTriangle, Edit2, Check, Shield, Plus, Bell
 } from "lucide-react";
 
 const BANNER_COLORS = [

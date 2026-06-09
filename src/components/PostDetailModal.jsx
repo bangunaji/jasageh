@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Send, Trash2, MessageSquare, Phone, MapPin, Tag, Calendar, CornerDownRight } from "lucide-react";
+import { X, Send, Trash2, MessageSquare, MapPin, Tag, Calendar, CornerDownRight } from "lucide-react";
 import { db } from "../firebase";
 import { collection, addDoc, deleteDoc, doc, onSnapshot, serverTimestamp, query, orderBy, updateDoc, increment } from "firebase/firestore";
 
@@ -35,7 +35,7 @@ function UserAvatar({ name, bgColor, size = "sm" }) {
   );
 }
 
-export default function PostDetailModal({ post, currentUser, onClose, onOpenUserProfile }) {
+export default function PostDetailModal({ post, currentUser, onClose, onOpenUserProfile, onOpenChat }) {
   const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -103,15 +103,6 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
     }
   };
 
-  const getWhatsAppUrl = () => {
-    const cleanNumber = (post.whatsapp || "").replace(/[^0-9]/g, "");
-    const text = encodeURIComponent(
-      `Halo *${post.userName}*, saya melihat postingan Anda di *JasaGeh Lampung*:\n\n` +
-      `*"${post.title}"*\n\nApakah masih tersedia? Saya ingin berdiskusi. Terima kasih!`
-    );
-    return `https://wa.me/${cleanNumber}?text=${text}`;
-  };
-
   const formattedDate = post.createdAt?.toDate
     ? post.createdAt.toDate().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
     : post.createdAt
@@ -163,13 +154,13 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
               {post.description}
             </p>
 
-            {post.whatsapp && (
+{post.userId && currentUser && currentUser.uid !== post.userId && (
               <div className="mt-4 flex justify-end">
-                <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer"
-                  className="comic-btn text-xs py-2 px-3 bg-green-400 text-black border-black hover:bg-green-300 font-bold">
-                  <Phone size={14} />
-                  <span>Hubungi via WhatsApp</span>
-                </a>
+                <button onClick={() => onOpenChat && onOpenChat(post)}
+                  className="comic-btn text-xs py-2 px-3 bg-blue-400 text-black border-black hover:bg-blue-300 font-bold">
+                  <Send size={14} />
+                   <span>Kirim DM</span>
+                </button>
               </div>
             )}
           </div>

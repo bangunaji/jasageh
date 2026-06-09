@@ -1,7 +1,7 @@
 import React from "react";
 import { LogIn, LogOut, ShieldAlert, MapPin } from "lucide-react";
 
-export default function Header({ currentUser, onLoginClick, onLogout, currentView, setCurrentView }) {
+export default function Header({ currentUser, onLoginClick, onLogout, currentView, setCurrentView, totalUnread }) {
   const getCharacterDialogue = () => {
     if (!currentUser) return "Hehehe... Belum login ya? Login pakai Akun Google-mu geh!";
     const name = currentUser.name || currentUser.displayName || "kamu";
@@ -54,6 +54,19 @@ export default function Header({ currentUser, onLoginClick, onLogout, currentVie
             {currentUser && (
               <button onClick={() => setCurrentView("profile")} className={`comic-btn text-xs md:text-sm ${currentView === "profile" ? "bg-[var(--shinchan-yellow)]" : "bg-white"}`}>
                 👤 Profilku
+              </button>
+            )}
+            {currentUser && (
+              <button
+                onClick={() => setCurrentView("inbox")}
+                className={`comic-btn text-xs md:text-sm relative ${currentView === "inbox" ? "bg-[var(--shinchan-yellow)]" : "bg-white"}`}
+              >
+                💬 Pesan
+                {totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-[var(--shinchan-red)] text-white text-[9px] font-black border-2 border-black rounded-full flex items-center justify-center shadow-[1px_1px_0px_#000]">
+                    {totalUnread > 99 ? "99+" : totalUnread}
+                  </span>
+                )}
               </button>
             )}
             {currentUser?.isAdmin && (

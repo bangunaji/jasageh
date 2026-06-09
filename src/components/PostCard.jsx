@@ -1,5 +1,5 @@
 import React from "react";
-import { MessageSquare, Phone, MapPin, Tag, Star } from "lucide-react";
+import { MessageSquare, Send, MapPin, Tag, Star } from "lucide-react";
 
 function UserAvatar({ name, bgColor, size = "sm" }) {
   const initial = (name || "?").charAt(0).toUpperCase();
@@ -12,25 +12,23 @@ function UserAvatar({ name, bgColor, size = "sm" }) {
   );
 }
 
-export default function PostCard({ post, getUserRatingSummary, onOpenDetails, onOpenUserProfile }) {
+export default function PostCard({ post, getUserRatingSummary, onOpenDetails, onOpenUserProfile, onOpenChat, currentUser, unreadCounts }) {
   const ratingSummary = getUserRatingSummary(post.userId);
-
-  const getWhatsAppUrl = () => {
-    const cleanNumber = (post.whatsapp || "").replace(/[^0-9]/g, "");
-    const text = encodeURIComponent(
-      `Halo *${post.userName}*, saya melihat postingan Anda di *JasaGeh Lampung*:\n\n` +
-      `*"${post.title}"*\n\nApakah masih tersedia? Saya ingin berdiskusi. Terima kasih!`
-    );
-    return `https://wa.me/${cleanNumber}?text=${text}`;
-  };
 
   const formattedDate = post.createdAt?.toDate
     ? post.createdAt.toDate().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
     : post.createdAt
-      ? new Date(post.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
-      : "";
+       ? new Date(post.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+       : "";
 
-  return (
+   let unreadCount = 0;
+   if (currentUser && post.userId && currentUser.uid !== post.userId) {
+     const participants = [currentUser.uid, post.userId].sort();
+     const conversationId = participants.join("_");
+     unreadCount = unreadCounts[conversationId] || 0;
+   }
+
+   return (
     <article className="comic-box bg-white overflow-hidden flex flex-col h-full">
       {/* Header */}
       <div className="bg-[var(--shinchan-yellow)]  border-b-3 border-black p-3 flex items-center justify-between">
@@ -89,10 +87,15 @@ export default function PostCard({ post, getUserRatingSummary, onOpenDetails, on
               <MessageSquare size={14} />
               <span>Komen ({post.commentCount || 0})</span>
             </button>
-            <a href={getWhatsAppUrl()} target="_blank" rel="noopener noreferrer"
-              className="comic-btn text-xs py-2 px-1 justify-center bg-green-400 text-black border-black hover:bg-green-300 font-bold">
-              <Phone size={14} /><span>WhatsApp</span>
-            </a>
+             <button onClick={() => onOpenChat(post)}
+               className="relative comic-btn text-xs py-2 px-1 justify-center bg-blue-400 text-black border-black hover:bg-blue-300 font-bold">
+               <Send size={14} /><span>DM</span>
+               {unreadCount > 0 && (
+                 <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center bg-red-500 text-white text-xs rounded-full">
+                   {unreadCount}
+                 </div>
+               )}
+             </button>
           </div>
         </div>
       </div>

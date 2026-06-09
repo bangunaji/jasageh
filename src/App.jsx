@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { auth, db, googleProvider } from "./firebase";
 import {
   onAuthStateChanged, signInWithPopup, signOut
 } from "firebase/auth";
 import {
   collection, doc, addDoc, deleteDoc, updateDoc, getDoc, setDoc,
-  onSnapshot, serverTimestamp, query, orderBy, increment, arrayUnion, arrayRemove
+  onSnapshot, serverTimestamp, query, orderBy, increment, arrayUnion, arrayRemove, where
 } from "firebase/firestore";
 
 
@@ -16,9 +16,11 @@ import AdminPanel from "./components/AdminPanel";
 import AnnouncementBanner from "./components/AnnouncementBanner";
 import UserProfileModal from "./components/UserProfileModal";
 import PostDetailModal from "./components/PostDetailModal";
+import ChatModal from "./components/ChatModal";
+import Inbox from "./components/Inbox";
 
 import {
-  Search, Filter, X, Plus, ChevronDown, Trash2, Star, MapPin, Tag, Loader2, Phone
+  Search, X, Plus, Trash2, Star, MapPin, Loader2, Phone
 } from "lucide-react";
 
 const CATEGORIES = [
@@ -44,16 +46,7 @@ function LoadingSpinner() {
   );
 }
 
-function UserAvatar({ name, bgColor, size = "sm" }) {
-  const initial = (name || "?").charAt(0).toUpperCase();
-  const sizeClass = size === "sm" ? "w-8 h-8 text-sm" : size === "md" ? "w-12 h-12 text-xl" : "w-20 h-20 text-4xl";
-  const bg = bgColor || "var(--pastel-pink)";
-  return (
-    <div className={`${sizeClass} border-2 border-black rounded-xl overflow-hidden flex items-center justify-center shadow-[2px_2px_0px_#000] flex-shrink-0`} style={{ backgroundColor: bg }}>
-      <span className="font-black text-gray-700">{initial}</span>
-    </div>
-  );
-}
+
 
 const AVATAR_COLORS = ["#ffb3ba", "#bae1ff", "#fff79a", "#c4df9b", "#e8d7ff", "#ffd3b6"];
 
@@ -77,6 +70,7 @@ export default function App() {
   const [showAddPostForm, setShowAddPostForm] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [chatUser, setChatUser] = useState(null);
   const [bioText, setBioText] = React.useState(currentUser?.bio || "");
   const [isEditingBio, setIsEditingBio] = React.useState(false);
   const [loadingBio, setLoadingBio] = React.useState(false);
@@ -85,7 +79,9 @@ export default function App() {
   const [isEditingWhatsapp, setIsEditingWhatsapp] = React.useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const [newName, setNewName] = useState("");
-  const [loadingWhatsapp, setLoadingWhatsapp] = React.useState(false);
+   const [loadingWhatsapp, setLoadingWhatsapp] = React.useState(false);
+   const [unreadCounts, setUnreadCounts] = useState({});
+   const [conversations, setConversations] = useState([]);
 
   // Ambil ulasan dari sub-collection users -> currentUser.uid -> reviews
   React.useEffect(() => {
@@ -100,12 +96,7 @@ export default function App() {
     return () => unsub();
   }, [currentUser?.uid]);
 
-  // Sinkronisasi input bioText saat data currentUser dimuat
-  React.useEffect(() => {
-    if (currentUser?.bio) {
-      setBioText(currentUser.bio);
-    }
-  }, [currentUser]);
+
 
   // Fungsi menyimpan nomor WhatsApp ke Firestore
   const handleSaveWhatsapp = async () => {
@@ -130,11 +121,13 @@ export default function App() {
   const handleSaveBio = async () => {
     if (!currentUser?.uid) return;
     setLoadingBio(true);
-    try {
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, { bio: bioText.trim() });
-      setIsEditingBio(false);
-      alert("Biodata berhasil diperbarui!");
+     try {
+       const userRef = doc(db, "users", currentUser.uid);
+       await updateDoc(userRef, { bio: bioText.trim() });
+       setBioText(bioText.trim());
+       setCurrentUser(prev => ({ ...prev, bio: bioText.trim() }));
+       setIsEditingBio(false);
+       alert("Biodata berhasil diperbarui!");
     } catch (error) {
       console.error("Gagal memperbarui biodata:", error);
     } finally {
@@ -208,23 +201,25 @@ export default function App() {
           };
           await setDoc(userRef, newUserData);
 
-          // Pastikan displayName tetap disertakan di state lokal sebagai cadangan
-          setCurrentUser({
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName,
-            ...newUserData,
-            isAdmin: false
-          });
+           // Pastikan displayName tetap disertakan di state lokal sebagai cadangan
+           setCurrentUser({
+             uid: firebaseUser.uid,
+             displayName: firebaseUser.displayName,
+             ...newUserData,
+             isAdmin: false
+           });
+           setBioText("");
         } else {
           // Existing user — update photoURL if changed from Google
           const data = snap.data();
 
-          // Gabungkan data Firestore dengan properti dasar dari Firebase Auth
-          setCurrentUser({
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName,
-            ...data
-          });
+           // Gabungkan data Firestore dengan properti dasar dari Firebase Auth
+           setCurrentUser({
+             uid: firebaseUser.uid,
+             displayName: firebaseUser.displayName,
+             ...data
+           });
+           setBioText(data.bio || "");
         }
       } else {
         setCurrentUser(null);
@@ -274,6 +269,27 @@ export default function App() {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
   }, []);
+
+  // Listen to conversations where currentUser is a participant (real-time)
+  useEffect(() => {
+    if (!currentUser?.uid) return;
+    const q = query(
+      collection(db, "conversations"),
+      where("participants", "array-contains", currentUser.uid),
+      orderBy("lastMessageAt", "desc")
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const convList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setConversations(convList);
+      // Build unreadCounts map keyed by conversationId
+      const counts = {};
+      convList.forEach(conv => {
+        counts[conv.id] = conv.unreadCount?.[currentUser.uid] || 0;
+      });
+      setUnreadCounts(counts);
+    });
+    return () => unsub();
+  }, [currentUser?.uid]);
 
   // ─── Auth Handlers ───────────────────────────────────────────────
   const handleGoogleLogin = async () => {
@@ -440,6 +456,19 @@ export default function App() {
   };
 
 
+
+  // Handler for opening chat from post (accepts post object)
+  const handleOpenChatFromPost = (post) => {
+    if (!currentUser) { alert("Silakan login untuk mengirim pesan!"); return; }
+    if (post.userId === currentUser.uid) return;
+    const userObj = {
+      id: post.userId,
+      name: post.userName,
+      avatarColor: post.userAvatarColor,
+    };
+    setChatUser(userObj);
+  };
+
   // ─── Change Avatar Color ──────────────────────────────────────────
   const handleChangeAvatarColor = async (color) => {
     if (!currentUser) return;
@@ -519,6 +548,7 @@ export default function App() {
         onLogout={handleLogout}
         currentView={currentView}
         setCurrentView={setCurrentView}
+        totalUnread={conversations.reduce((sum, conv) => sum + (conv.unreadCount?.[currentUser?.uid] || 0), 0)}
       />
 
       {/* ── HOME VIEW ── */}
@@ -681,10 +711,13 @@ export default function App() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPosts.map(post => (
-                  <PostCard key={post.id} post={post} getUserRatingSummary={getUserRatingSummary}
-                    onOpenDetails={(p) => setSelectedPost(p)} onOpenUserProfile={handleOpenUserProfile} />
-                ))}
+                 {filteredPosts.map(post => (
+                    <PostCard key={post.id} post={post} getUserRatingSummary={getUserRatingSummary}
+                      onOpenDetails={(p) => setSelectedPost(p)} onOpenUserProfile={handleOpenUserProfile}
+                      onOpenChat={handleOpenChatFromPost}
+                      currentUser={currentUser}
+                      unreadCounts={unreadCounts} />
+                 ))}
               </div>
             )}
           </main>
@@ -695,6 +728,15 @@ export default function App() {
       {currentView === "mading" && (
         <MadingBoard madingList={madingList} currentUser={currentUser}
           onAddMading={handleAddMading} onDeleteMading={handleDeleteMading} onLikeMading={handleLikeMading} />
+      )}
+
+      {/* ── INBOX VIEW ── */}
+      {currentView === "inbox" && (
+        <Inbox
+          conversations={conversations}
+          currentUser={currentUser}
+          onOpenChat={(user) => setChatUser(user)}
+        />
       )}
 
       {currentView === "admin" && currentUser?.isAdmin && (
@@ -966,10 +1008,15 @@ export default function App() {
         <PostDetailModal post={selectedPost} currentUser={currentUser}
           onClose={() => setSelectedPost(null)} onOpenUserProfile={handleOpenUserProfile} />
       )}
-      {selectedUserProfile && (
-        <UserProfileModal user={selectedUserProfile} currentUser={currentUser}
-          onClose={() => setSelectedUserProfile(null)} onSubmitRating={handleSubmitRating} />
-      )}
+       {selectedUserProfile && (
+         <UserProfileModal user={selectedUserProfile} currentUser={currentUser}
+           onClose={() => setSelectedUserProfile(null)} onSubmitRating={handleSubmitRating} />
+       )}
+
+       {chatUser && (
+         <ChatModal otherUser={chatUser} currentUser={currentUser}
+           onClose={() => setChatUser(null)} />
+       )}
     </div>
   );
 }
