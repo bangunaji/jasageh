@@ -215,7 +215,7 @@ export default function ChatModal({ otherUser, currentUser, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 modal-overlay">
-      <div className="comic-box bg-white w-full sm:max-w-md max-h-[90vh] h-full sm:h-auto flex flex-col animate-bounce-in">
+      <div className="comic-box bg-white w-full sm:max-w-md max-h-[90vh] h-full sm:h-auto flex flex-col animate-bounce-in rounded-t-3xl sm:rounded-3xl overflow-hidden">
 
         {/* ── Header ───────────────────────────────────────────────── */}
         <div className="bg-[var(--shinchan-yellow)] p-3 border-b-3 border-black flex items-center justify-between flex-shrink-0">
