@@ -113,7 +113,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="comic-box bg-white w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in">
+      <div className="comic-box bg-white w-full max-w-2xl max-h-[90vh] flex flex-col animate-scale-in rounded-3xl overflow-hidden">
 
         {/* Header Modal */}
         <div className="bg-[var(--shinchan-yellow)] border-b-3 border-black p-4 flex items-center justify-between flex-shrink-0">
