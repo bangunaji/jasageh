@@ -65,15 +65,21 @@ export default function UserProfileModal({ user, currentUser, onClose, onSubmitR
               </div>
               <div className="pt-1">
                 {currentUser && currentUser.uid !== user.id ? (
-                  <button onClick={() => onOpenChat && onOpenChat(user)}
-                    className="comic-btn text-xs bg-blue-400 hover:bg-blue-300 font-bold py-1.5 px-3">
-                    <Send size={12} /><span>Kirim DM</span>
-                  </button>
+                  user.whatsapp ? (
+                    <a href={`https://wa.me/${user.whatsapp}`} target="_blank" rel="noopener noreferrer"
+                      className="comic-btn text-xs bg-green-400 hover:bg-green-300 font-bold py-1.5 px-3">
+                      <Send size={12} /><span>Hubungi via WA</span>
+                    </a>
+                  ) : (
+                    <button onClick={() => alert("Pengguna ini belum menambahkan nomor WhatsApp di profilnya.")}
+                      className="comic-btn text-xs bg-gray-300 text-gray-500 font-bold py-1.5 px-3 cursor-not-allowed">
+                      <Send size={12} /><span>Belum ada WA</span>
+                    </button>
+                  )
                 ) : user.whatsapp && (
-                  <a href={`https://wa.me/${user.whatsapp}`} target="_blank" rel="noopener noreferrer"
-                    className="comic-btn text-xs bg-green-400 hover:bg-green-300 font-bold py-1.5 px-3">
+                  <div className="comic-btn text-xs bg-green-100 text-green-700 font-bold py-1.5 px-3 cursor-default">
                     <Send size={12} /><span>+{user.whatsapp}</span>
-                  </a>
+                  </div>
                 )}
               </div>
             </div>

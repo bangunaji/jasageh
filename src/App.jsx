@@ -1048,7 +1048,8 @@ export default function App() {
       {/* ── MODALS ── */}
       {selectedPost && (
         <PostDetailModal post={selectedPost} currentUser={currentUser}
-          onClose={() => setSelectedPost(null)} onOpenUserProfile={handleOpenUserProfile} />
+          onClose={() => setSelectedPost(null)} onOpenUserProfile={handleOpenUserProfile} 
+          onOpenChat={handleOpenChatFromPost} />
       )}
        {selectedUserProfile && (
          <UserProfileModal user={selectedUserProfile} currentUser={currentUser}
