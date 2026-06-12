@@ -1,7 +1,7 @@
 import React from "react";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Trash2 } from "lucide-react";
 
-export default function Inbox({ conversations, currentUser, onOpenChat }) {
+export default function Inbox({ conversations, currentUser, onOpenChat, onDeleteChat }) {
   if (!currentUser) return null;
 
   return (
@@ -76,12 +76,24 @@ export default function Inbox({ conversations, currentUser, onOpenChat }) {
                     </p>
                   </div>
 
-                  {/* Unread Badge */}
-                  {isUnread && (
-                    <div className="w-6 h-6 rounded-full bg-[var(--shinchan-red)] border-2 border-black flex items-center justify-center flex-shrink-0 shadow-[1px_1px_0px_#000]">
-                      <span className="text-[10px] font-black text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>
-                    </div>
-                  )}
+                  {/* Unread Badge & Delete Button */}
+                  <div className="flex flex-col items-center gap-2">
+                    {isUnread && (
+                      <div className="w-6 h-6 rounded-full bg-[var(--shinchan-red)] border-2 border-black flex items-center justify-center flex-shrink-0 shadow-[1px_1px_0px_#000]">
+                        <span className="text-[10px] font-black text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>
+                      </div>
+                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteChat(conv.id);
+                      }}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200"
+                      title="Hapus Obrolan"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               );
             })}

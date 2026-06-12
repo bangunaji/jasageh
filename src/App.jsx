@@ -175,7 +175,9 @@ export default function App() {
   };
 
   // Form state
-  const [newPost, setNewPost] = useState({ title: "", description: "", category: "", region: "", whatsapp: "", price: "", type: "offer" });
+  const [newPost, setNewPost] = useState({ title: "", description: "", category: "", region: "", price: "", type: "offer" });
+  const [imageFile, setImageFile] = useState(null);
+  const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
   // ─── Firebase Auth Listener ───────────────────────────────────────
   useEffect(() => {
@@ -275,11 +277,18 @@ export default function App() {
     if (!currentUser?.uid) return;
     const q = query(
       collection(db, "conversations"),
-      where("participants", "array-contains", currentUser.uid),
-      orderBy("lastMessageAt", "desc")
+      where("participants", "array-contains", currentUser.uid)
     );
     const unsub = onSnapshot(q, (snap) => {
       const convList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      
+      // Mengurutkan secara lokal untuk menghindari error composite index Firestore
+      convList.sort((a, b) => {
+        const timeA = a.lastMessageAt ? (a.lastMessageAt.toMillis ? a.lastMessageAt.toMillis() : new Date(a.lastMessageAt).getTime()) : Date.now();
+        const timeB = b.lastMessageAt ? (b.lastMessageAt.toMillis ? b.lastMessageAt.toMillis() : new Date(b.lastMessageAt).getTime()) : Date.now();
+        return timeB - timeA;
+      });
+
       setConversations(convList);
       // Build unreadCounts map keyed by conversationId
       const counts = {};
@@ -308,23 +317,49 @@ export default function App() {
 
   const handleAddPost = async (e) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || isSubmittingPost) return;
 
-    // 1. Validasi Tambahan: Pastikan WhatsApp dimulai dengan 62
-    if (!newPost.whatsapp.startsWith("62")) {
-      alert("Nomor WhatsApp harus dimulai dengan format 62 (contoh: 62812...)");
-      return;
-    }
-
-    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.region || !newPost.whatsapp || !newPost.price) {
+    if (!newPost.title.trim() || !newPost.description.trim() || !newPost.category || !newPost.region || !newPost.price) {
       alert("Harap isi semua field, termasuk harga!");
       return;
     }
 
+    setIsSubmittingPost(true);
+
     try {
+      let imageUrl = "";
+
+      // Upload ke ImgBB
+      if (imageFile) {
+        const apiKey = import.meta.env.VITE_IMGBB_API_KEY;
+        if (!apiKey || apiKey === "your_imgbb_api_key_here") {
+          alert("API Key ImgBB belum dikonfigurasi di file .env!");
+          setIsSubmittingPost(false);
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("image", imageFile);
+
+        const uploadRes = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+          method: "POST",
+          body: formData,
+        });
+
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) {
+          imageUrl = uploadData.data.url;
+        } else {
+          alert("Gagal mengunggah foto ke ImgBB.");
+          setIsSubmittingPost(false);
+          return;
+        }
+      }
+
       await addDoc(collection(db, "posts"), {
         ...newPost,
         price: Number(newPost.price), // 2. Simpan harga sebagai angka (Number)
+        imageUrl: imageUrl, // Simpan URL foto
         userId: currentUser.uid,
         userName: currentUser.name || currentUser.displayName,
         userAvatarColor: currentUser.avatarColor || "#ffb3ba",
@@ -332,12 +367,15 @@ export default function App() {
         createdAt: serverTimestamp(),
       });
 
-      // 3. Reset form termasuk price
-      setNewPost({ title: "", description: "", category: "", region: "", whatsapp: "", price: "", type: "offer" });
+      // 3. Reset form termasuk price dan image
+      setNewPost({ title: "", description: "", category: "", region: "", price: "", type: "offer" });
+      setImageFile(null);
       setShowAddPostForm(false);
     } catch (err) {
       console.error("Gagal tambah postingan:", err);
       alert("Gagal menambah postingan.");
+    } finally {
+      setIsSubmittingPost(false);
     }
   };
 
@@ -467,6 +505,16 @@ export default function App() {
       avatarColor: post.userAvatarColor,
     };
     setChatUser(userObj);
+  };
+
+  const handleDeleteConversation = async (conversationId) => {
+    if (!window.confirm("Yakin ingin menghapus obrolan ini permanen?")) return;
+    try {
+      await deleteDoc(doc(db, "conversations", conversationId));
+    } catch (err) {
+      console.error("Gagal menghapus obrolan:", err);
+      alert("Gagal menghapus obrolan.");
+    }
   };
 
   // ─── Change Avatar Color ──────────────────────────────────────────
@@ -613,28 +661,13 @@ export default function App() {
                       <input type="text" value={newPost.title} onChange={e => setNewPost(p => ({ ...p, title: e.target.value }))}
                         className="comic-input text-sm" placeholder="Contoh: Jasa Edit Video Profesional" maxLength={80} required />
                     </div>
-                    {/* Tambahkan input Harga di bawah input WhatsApp */}
+                    {/* Tambahkan input Harga */}
                     <div>
                       <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Harga (Rp)</label>
                       <input type="number"
                         value={newPost.price}
                         onChange={e => setNewPost(p => ({ ...p, price: e.target.value }))}
                         className="comic-input text-sm" placeholder="Contoh: 50000" required />
-                    </div>
-
-                    {/* Modifikasi input WhatsApp agar user tahu formatnya */}
-                    <div>
-                      <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">No. WhatsApp (Awali 62)</label>
-                      <input type="text"
-                        value={newPost.whatsapp}
-                        onChange={e => {
-                          const val = e.target.value.replace(/[^0-9]/g, ""); // Hanya angka
-                          setNewPost(p => ({ ...p, whatsapp: val }));
-                        }}
-                        className="comic-input text-sm" placeholder="628xxxxxxxxxx" required />
-                      {newPost.whatsapp && !newPost.whatsapp.startsWith("62") && (
-                        <p className="text-[10px] text-red-600 font-bold mt-1">⚠️ Harus diawali 62 (contoh: 62812...)</p>
-                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Kategori</label>
@@ -659,10 +692,18 @@ export default function App() {
                       className="comic-textarea text-sm" rows={4} maxLength={600}
                       placeholder="Jelaskan jasa/kebutuhan kamu secara detail..." required />
                   </div>
+                  <div>
+                    <label className="block text-xs font-extrabold uppercase text-gray-500 tracking-wider mb-1">Foto/Gambar (Opsional)</label>
+                    <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])}
+                      className="comic-input text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-extrabold file:bg-[var(--shinchan-yellow)] file:text-black hover:file:bg-amber-300 transition-all cursor-pointer bg-gray-50" />
+                    {imageFile && (
+                      <p className="text-[10px] text-green-600 font-bold mt-1">📸 {imageFile.name} siap diunggah.</p>
+                    )}
+                  </div>
                   <div className="flex gap-3 justify-end pt-2">
                     <button type="button" onClick={() => setShowAddPostForm(false)} className="comic-btn bg-white text-sm">Batal</button>
-                    <button type="submit" className="comic-btn bg-[var(--shinchan-red)] text-white font-extrabold text-sm">
-                      <Plus size={16} /> Posting Sekarang!
+                    <button type="submit" disabled={isSubmittingPost} className="comic-btn bg-[var(--shinchan-red)] text-white font-extrabold text-sm disabled:opacity-50">
+                      {isSubmittingPost ? "Mengunggah..." : <><Plus size={16} /> Posting Sekarang!</>}
                     </button>
                   </div>
                 </form>
@@ -736,6 +777,7 @@ export default function App() {
           conversations={conversations}
           currentUser={currentUser}
           onOpenChat={(user) => setChatUser(user)}
+          onDeleteChat={handleDeleteConversation}
         />
       )}
 

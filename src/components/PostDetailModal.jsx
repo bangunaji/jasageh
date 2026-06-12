@@ -150,6 +150,15 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
             </div>
 
             <h2 className="text-lg font-black leading-tight mb-3 text-gray-900">{post.title}</h2>
+            
+            {post.imageUrl && (
+              <div className="mb-4 w-full rounded-xl overflow-hidden border-2 border-black shadow-[3px_3px_0px_#000]">
+                <a href={post.imageUrl} target="_blank" rel="noopener noreferrer">
+                  <img src={post.imageUrl} alt={post.title} className="w-full max-h-80 object-contain bg-gray-100 cursor-pointer hover:opacity-90 transition-opacity" title="Klik untuk memperbesar" />
+                </a>
+              </div>
+            )}
+
             <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap bg-gray-50 p-4 border-2 border-black rounded-xl">
               {post.description}
             </p>

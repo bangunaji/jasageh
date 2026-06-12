@@ -71,6 +71,14 @@ export default function PostCard({ post, getUserRatingSummary, onOpenDetails, on
             onClick={() => onOpenDetails(post)}>
             {post.title}
           </h3>
+
+          {/* Menampilkan foto jika ada */}
+          {post.imageUrl && (
+            <div className="mb-3 w-full h-32 rounded-xl overflow-hidden border-2 border-black shadow-[2px_2px_0px_#000] cursor-pointer" onClick={() => onOpenDetails(post)}>
+              <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover hover:scale-105 transition-transform" />
+            </div>
+          )}
+
           <p className="text-xs text-gray-700 line-clamp-3 leading-relaxed mb-2 break-all">{post.description}</p>
 
           {/* Tambahkan ini untuk menampilkan harga */}
