@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 
 /**
- * Komponen AdminPanel - Pusat Kendali JasaGeh
+ * Komponen AdminPanel - Pusat Kendali Bangunjasa
  * Menangani statistik, moderasi postingan, mading, dan manajemen user.
  */
 export default function AdminPanel({

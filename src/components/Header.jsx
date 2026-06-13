@@ -20,7 +20,7 @@ export default function Header({ currentUser, onLoginClick, onLogout, currentVie
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setCurrentView("home")}>
             <div className="bg-[var(--shinchan-red)] border-3 border-black p-2 rounded-xl text-white font-bold text-xl md:text-2xl shadow-[2px_2px_0px_#000] rotate-[-2deg] hover:rotate-[2deg] transition-all">
-              JasaGeh!
+              Bangunjasa!
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-extrabold tracking-widest text-[var(--comic-black)] uppercase">Lampung</span>

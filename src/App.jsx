@@ -40,7 +40,7 @@ function LoadingSpinner() {
       <div className="comic-box bg-[var(--shinchan-yellow)] p-8 text-center animate-bounce-in">
         <div className="text-5xl mb-4 animate-float">🎒</div>
         <Loader2 size={32} className="animate-spin mx-auto text-[var(--shinchan-red)] mb-2" />
-        <p className="font-extrabold text-lg">Memuat JasaGeh...</p>
+        <p className="font-extrabold text-lg">Memuat Bangunjasa...</p>
       </div>
     </div>
   );
