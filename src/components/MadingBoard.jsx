@@ -36,7 +36,7 @@ export default function MadingBoard({ madingList, currentUser, onAddMading, onDe
     <section className="max-w-6xl mx-auto px-4 mt-6">
       <div className="text-center mb-6">
         <h2 className="text-3xl font-extrabold rotate-[-1deg] inline-block bg-[var(--shinchan-yellow)] px-4 py-2 border-3 border-black rounded-xl shadow-[3px_3px_0px_#000] mb-2">
-          📢 Mading JasaGeh Lampung
+          📢 Mading Bangunjasa Lampung
         </h2>
         <p className="text-sm text-gray-600 font-bold">Papan informasi umum untuk berbagi pengumuman, lowongan kilat, atau info seputar Lampung!</p>
       </div>

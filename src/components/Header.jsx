@@ -5,7 +5,7 @@ export default function Header({ currentUser, onLoginClick, onLogout, currentVie
   const getCharacterDialogue = () => {
     if (!currentUser) return "Hehehe... Belum login ya? Login pakai Akun Google-mu geh!";
     const name = currentUser.name || currentUser.displayName || "kamu";
-    if (currentUser.isAdmin) return "Mode Administrator Aktif. Mari jaga komunitas JasaGeh Lampung! 🔑";
+    if (currentUser.isAdmin) return "Mode Administrator Aktif. Mari jaga komunitas Bangunjasa Lampung! 🔑";
     return `Halo ${name.split(" ")[0]}! Mau tawarkan jasa atau cari jasa hari ini? 😄`;
   };
 

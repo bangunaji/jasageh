@@ -19,15 +19,25 @@ service cloud.firestore {
 
     // 1. ATURAN KOLEKSI PENGGUNA (users)
     match /users/{userId} {
-      // Semua orang bisa melihat profil (untuk menampilkan pembuat post)
       allow read: if true;
+      allow create: if isOwner(userId);
       
-      // Hacker TIDAK BISA membuat/mengubah data orang lain.
-      // Hanya pemilik asli akun yang bisa mengubah datanya sendiri.
-      allow create, update: if isOwner(userId);
-      
-      // Data profil tidak boleh dihapus secara sepihak lewat aplikasi web
+      // Izinkan pemilik akun mengubah semua data
+      // ATAU izinkan pengguna login mengubah HANYA field views, ratingsCache, ratingAverage, ratingCount
+      allow update: if isOwner(userId) 
+                    || (
+                         isAuthenticated() 
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'ratingsCache', 'ratingAverage', 'ratingCount'])
+                       );
+                       
       allow delete: if false; 
+
+      // Subkoleksi ulasan (ratings)
+      match /ratings/{ratingId} {
+        allow read: if true;
+        allow create: if isAuthenticated() && request.resource.data.raterId == request.auth.uid;
+        allow update, delete: if isOwner(request.resource.data.raterId);
+      }
     }
 
     // 2. ATURAN POSTINGAN JASA (posts & mading)
@@ -42,9 +52,19 @@ service cloud.firestore {
                     && isValidText(request.resource.data.title, 200)
                     && isValidText(request.resource.data.description, 5000);
 
-      // Hanya pembuat asli yang bisa mengubah atau menghapus postingan
-      allow update, delete: if (postType == 'posts' || postType == 'mading')
-                            && isOwner(resource.data.userId);
+      // Hanya pembuat asli yang bisa mengubah konten utama
+      // ATAU izinkan pengguna login untuk HANYA menambah/mengurangi commentCount
+      allow update: if (postType == 'posts' || postType == 'mading')
+                    && (
+                         isOwner(resource.data.userId)
+                         || (
+                              isAuthenticated()
+                              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+                            )
+                       );
+
+      allow delete: if (postType == 'posts' || postType == 'mading')
+                    && isOwner(resource.data.userId);
 
       // 3. ATURAN KOMENTAR POSTINGAN & MADING
       match /comments/{commentId} {
@@ -67,8 +87,8 @@ service cloud.firestore {
       // Saat memperbarui (update unread count / last message), pembaruan harus dilakukan oleh partisipan
       allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
       
-      // Cegah penghapusan seluruh percakapan (hanya hapus isi pesannya saja)
-      allow delete: if false;
+      // Izinkan partisipan menghapus obrolan dari kotak masuk
+      allow delete: if isAuthenticated() && request.auth.uid in resource.data.participants;
 
       // 5. ATURAN ISI PESAN KETAT (messages di dalam conversations)
       match /messages/{messageId} {

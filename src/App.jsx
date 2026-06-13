@@ -607,7 +607,7 @@ export default function App() {
             {/* Hero */}
             <div className="comic-box bg-[var(--shinchan-yellow)] p-6 mb-8 text-center rotate-[-0.5deg] hover:rotate-0 transition-all">
               <h1 className="text-3xl md:text-4xl font-extrabold mb-2">
-                🎒 JasaGeh Lampung!
+                🎒 Bangunjasa Lampung!
               </h1>
               <p className="text-sm md:text-base font-bold text-gray-700 max-w-xl mx-auto">
                 Platform pertemuan jasa <strong>Provinsi Lampung</strong>. Tawarkan keahlianmu atau temukan orang yang kamu butuhkan!

@@ -104,7 +104,7 @@ export default function PostDetailModal({ post, currentUser, onClose, onOpenUser
   const getWhatsAppUrl = () => {
     const cleanNumber = (post.whatsapp || "").replace(/[^0-9]/g, "");
     const text = encodeURIComponent(
-      `Halo *${post.userName}*, saya melihat postingan Anda di *JasaGeh Lampung*:\n\n` +
+      `Halo *${post.userName}*, saya melihat postingan Anda di *Bangunjasa Lampung*:\n\n` +
       `*"${post.title}"*\n\nApakah masih tersedia? Saya ingin berdiskusi. Terima kasih!`
     );
     return `https://wa.me/${cleanNumber}?text=${text}`;

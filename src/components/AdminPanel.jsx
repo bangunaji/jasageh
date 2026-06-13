@@ -94,7 +94,7 @@ export default function AdminPanel({
           <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">
             <ShieldAlert size={24} /> Panel Admin
           </h2>
-          <p className="text-xs text-red-100 font-bold mt-0.5">Kelola seluruh konten JasaGeh Lampung</p>
+          <p className="text-xs text-red-100 font-bold mt-0.5">Kelola seluruh konten Bangunjasa Lampung</p>
         </div>
 
         {/* Warning */}
@@ -153,7 +153,7 @@ export default function AdminPanel({
                       onChange={e => setBannerText(e.target.value)}
                       maxLength={150}
                       rows={2}
-                      placeholder="Contoh: Selamat datang di JasaGeh Lampung! Platform resmi jasa warga Lampung 🎉"
+                      placeholder="Contoh: Selamat datang di Bangunjasa Lampung! Platform resmi jasa warga Lampung 🎉"
                       className="comic-textarea text-xs w-full"
                     />
                     <div className="text-[10px] text-right text-gray-400 font-bold mt-0.5">{bannerText.length}/150</div>
